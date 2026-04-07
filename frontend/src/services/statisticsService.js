@@ -1,5 +1,5 @@
 import axios from 'axios'
-const API_URL = 'http://localhost:8080/api/statistics'
+const API_URL = import.meta.env.VITE_API_URL + '/api/statistics'
 
 export function getStatisticsToday() {
   return axios.get(`${API_URL}/today`)

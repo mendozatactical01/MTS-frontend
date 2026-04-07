@@ -98,7 +98,7 @@ export default {
     },
     async loadStats() {
       try {
-        const res = await fetch('http://localhost:8080/api/statistics/today')
+        const res = await fetch(import.meta.env.VITE_API_URL + '/api/statistics/today')
         if (res.ok) this.stats = await res.json()
       } catch {}
     },
