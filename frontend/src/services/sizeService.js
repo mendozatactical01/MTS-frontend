@@ -5,13 +5,13 @@ export function getAllSizes() {
   return axios.get(`${API_URL}/all`)
 }
 export function addSize(name) {
-  return axios.post(API_URL, { name })
+  return axios.post(`${API_URL}/save`, { name })
 }
 export function deleteSize(id) {
   return axios.delete(`${API_URL}/${id}`)
 }
 export function editSize(id, name) {
-  return axios.post(API_URL, { id, name })
+  return axios.post(`${API_URL}/save`, { id, name })
 }
 export function searchSizes(name) {
   return axios.get(`${API_URL}/search`, { params: { name } })
