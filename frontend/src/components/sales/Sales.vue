@@ -69,10 +69,26 @@
               <div class="col-md-3">
                 <div class="form-group">
                   <label>Producto *</label>
-                  <select v-model.number="itemForm.productId" class="form-select" :disabled="isProcessing">
-                    <option value="" disabled>Seleccionar</option>
-                    <option v-for="p in products" :key="p.id" :value="p.id">{{ p.name }} — 💳 ${{ p.price?.toFixed(2) }} | 💵 ${{ p.priceCash?.toFixed(2) ?? '?' }}</option>
-                  </select>
+                  <div class="autocomplete-wrap">
+                    <input
+                      v-model="productSearch"
+                      class="form-control"
+                      placeholder="Buscar producto..."
+                      :disabled="isProcessing"
+                      autocomplete="off"
+                      @focus="showProductDropdown = true"
+                      @blur="onProductBlur"
+                      @input="showProductDropdown = true; itemForm.productId = ''"
+                    />
+                    <div v-if="showProductDropdown && filteredProducts.length" class="autocomplete-dropdown">
+                      <div v-for="p in filteredProducts" :key="p.id" class="autocomplete-item" @mousedown.prevent="selectProduct(p)">
+                        {{ p.name }}
+                      </div>
+                    </div>
+                    <div v-else-if="showProductDropdown && productSearch && !filteredProducts.length" class="autocomplete-dropdown">
+                      <div class="autocomplete-empty">Sin resultados</div>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div class="col-md-2">
@@ -467,6 +483,7 @@ export default {
       sales: [], products: [], sizes: [], stock: [],
       saleForm: { customerName: '', customerIdentification: '', observations: '', discount: 0, paymentMethod: 'EFECTIVO', items: [] },
       itemForm: { productId: '', sizeId: '', quantity: 1, unitPrice: 0 },
+      productSearch: '', showProductDropdown: false,
       salesFilters: { timeFilter: 'today', specificDate: '', searchType: '', searchValue: '' },
       editModal: { show: false, sale: null, originalSale: null, newItem: { productId: '', sizeId: '', quantity: 1, unitPrice: 0 } },
       deleteModal: { show: false, sale: null },
@@ -477,6 +494,11 @@ export default {
     }
   },
   computed: {
+    filteredProducts() {
+      const q = this.productSearch.trim().toLowerCase()
+      if (!q) return this.products.slice(0, 8)
+      return this.products.filter(p => p.name.toLowerCase().includes(q)).slice(0, 8)
+    },
     currentStockAvailable() {
       if (!this.itemForm.productId) return null
       return this.getStockQty(this.itemForm.productId, this.itemForm.sizeId || null)
@@ -595,6 +617,7 @@ export default {
       if (available !== null && this.itemForm.quantity > available) { this.showToast('error', `Stock insuficiente (${available})`); return }
       this.saleForm.items.push({ productId: this.itemForm.productId, sizeId: this.itemForm.sizeId || null, quantity: this.itemForm.quantity, unitPrice: Number(this.itemForm.unitPrice) })
       this.itemForm = { productId: '', sizeId: '', quantity: 1, unitPrice: 0 }
+      this.productSearch = ''
       this.showToast('success', 'Ítem agregado')
     },
     removeItem(idx) { this.saleForm.items.splice(idx, 1) },
@@ -613,7 +636,16 @@ export default {
     resetSaleForm() {
       this.saleForm = { customerName: '', customerIdentification: '', observations: '', discount: 0, paymentMethod: 'EFECTIVO', items: [] }
       this.itemForm = { productId: '', sizeId: '', quantity: 1, unitPrice: 0 }
+      this.productSearch = ''
       this.errors = {}
+    },
+    selectProduct(p) {
+      this.itemForm.productId = p.id
+      this.productSearch = p.name
+      this.showProductDropdown = false
+    },
+    onProductBlur() {
+      setTimeout(() => { this.showProductDropdown = false }, 150)
     },
 
     // ── DELETE ──────────────────────────────────────────
@@ -766,6 +798,20 @@ details[open] .summary-trigger::before { transform: rotate(90deg); }
 .pay-cash     { background: rgba(74,160,74,0.15);  color: #6db96d; border: 1px solid rgba(74,160,74,0.3); }
 .pay-card     { background: rgba(58,124,165,0.15); color: #6ab4e8; border: 1px solid rgba(58,124,165,0.3); }
 .pay-transfer { background: rgba(201,125,44,0.15); color: var(--amber-light); border: 1px solid rgba(201,125,44,0.3); }
+
+/* Autocomplete */
+.autocomplete-wrap { position: relative; }
+.autocomplete-dropdown {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 200;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow-lg);
+  max-height: 220px; overflow-y: auto; margin-top: 2px;
+}
+.autocomplete-item {
+  padding: 0.5rem 0.75rem; cursor: pointer; font-size: 0.875rem; transition: background 0.1s;
+}
+.autocomplete-item:hover { background: var(--bg-hover); color: var(--crimson-light); }
+.autocomplete-empty { padding: 0.5rem 0.75rem; color: var(--text-muted); font-size: 0.85rem; }
 
 .tac-toast {
   position: fixed; bottom: 1.5rem; right: 1.5rem;
