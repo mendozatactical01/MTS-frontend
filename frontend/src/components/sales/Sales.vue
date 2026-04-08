@@ -520,6 +520,25 @@ export default {
         const p = this.products.find(x => x.id === this.itemForm.productId)
         if (p) this.itemForm.unitPrice = val === 'TARJETA' ? p.price : (p.priceCash ?? p.price)
       }
+      this.saleForm.items = this.saleForm.items.map(item => {
+        const p = this.products.find(x => x.id === item.productId)
+        if (p) return { ...item, unitPrice: val === 'TARJETA' ? p.price : (p.priceCash ?? p.price) }
+        return item
+      })
+    },
+    'salesFilters.searchValue'(val) {
+      clearTimeout(this._searchTimeout)
+      if (this.salesFilters.searchType) {
+        if (val) {
+          this._searchTimeout = setTimeout(() => this.handleSearch(), 400)
+        } else {
+          this.fetchSales()
+        }
+      }
+    },
+    'salesFilters.searchType'(val) {
+      this.salesFilters.searchValue = ''
+      if (!val) this.fetchSales()
     },
     'editModal.newItem.productId'(val) {
       if (val) {

@@ -63,6 +63,24 @@
           </div>
         </div>
 
+        <!-- Desglose por medio de pago -->
+        <div v-if="data.paymentBreakdown" class="payment-breakdown mb-4">
+          <div class="pb-card pb-cash">
+            <div class="pb-label">💵 Efectivo / Transf.</div>
+            <div class="pb-value">${{ formatMoney(data.paymentBreakdown.cash) }}</div>
+          </div>
+          <div class="pb-plus">+</div>
+          <div class="pb-card pb-card">
+            <div class="pb-label">💳 Tarjeta</div>
+            <div class="pb-value">${{ formatMoney(data.paymentBreakdown.card) }}</div>
+          </div>
+          <div class="pb-plus">=</div>
+          <div class="pb-card pb-total">
+            <div class="pb-label">Total Combinado</div>
+            <div class="pb-value">${{ formatMoney(data.paymentBreakdown.combined) }}</div>
+          </div>
+        </div>
+
         <div class="stats-grid-2">
           <!-- Top productos -->
           <div class="tac-card" v-if="data.topProducts && data.topProducts.length">
@@ -326,11 +344,36 @@ export default {
 .bar-inner { width: 100%; background: var(--crimson); border-radius: 3px 3px 0 0; transition: height 0.5s ease; min-height: 4px; }
 .bar-label-bot { font-size: 0.65rem; color: var(--text-muted); font-family: var(--font-display); font-weight: 700; }
 
+/* Payment breakdown */
+.payment-breakdown {
+  display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+}
+.pb-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 1rem 1.5rem; flex: 1; min-width: 160px;
+}
+.pb-cash { border-top: 2px solid #22c55e; }
+.pb-total { border-top: 2px solid var(--crimson); }
+.pb-label {
+  font-family: var(--font-display); font-size: 0.7rem; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.3rem;
+}
+.pb-value {
+  font-family: var(--font-display); font-size: 1.6rem; font-weight: 800; color: var(--text-primary);
+}
+.pb-total .pb-value { color: var(--crimson-light); }
+.pb-plus {
+  font-family: var(--font-display); font-size: 1.5rem; font-weight: 800;
+  color: var(--text-muted); flex-shrink: 0;
+}
+
 @media (max-width: 900px) {
   .kpi-grid { grid-template-columns: 1fr 1fr; }
   .stats-grid-2 { grid-template-columns: 1fr; }
 }
 @media (max-width: 500px) {
   .kpi-grid { grid-template-columns: 1fr; }
+  .payment-breakdown { flex-direction: column; }
+  .pb-plus { display: none; }
 }
 </style>
