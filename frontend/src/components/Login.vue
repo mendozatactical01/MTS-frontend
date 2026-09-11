@@ -56,7 +56,7 @@ export default {
       try {
         const res = await login(this.username, this.password)
         saveToken(res.data.token)
-        this.$router.push(this.$route.query.redirect || '/')
+        this.$router.push(this.$route.query.redirect || '/admin')
       } catch (e) {
         const status = e.response?.status
         if (status === 401) this.error = 'Usuario o contraseña incorrectos'

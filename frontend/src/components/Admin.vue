@@ -161,6 +161,36 @@
                     </button>
                   </div>
                 </div>
+
+                <!-- Campos de tienda online -->
+                <div class="row g-2 mt-1">
+                  <div class="col-md-5">
+                    <div class="form-group">
+                      <label>Descripción (tienda online)</label>
+                      <textarea v-model.trim="forms.product.description" class="form-control form-control-sm" rows="1" :disabled="isProcessing"></textarea>
+                    </div>
+                  </div>
+                  <div class="col-md-3">
+                    <div class="form-group">
+                      <label>Imagen</label>
+                      <input type="file" accept="image/*" class="form-control form-control-sm" :disabled="isProcessing || isUploadingImage"
+                        @change="handleImageUpload($event, forms.product)" />
+                      <span v-if="forms.product.imageUrl" style="font-size:.72rem;color:var(--crimson-light)">✓ Imagen cargada</span>
+                    </div>
+                  </div>
+                  <div class="col-md-2">
+                    <div class="form-group">
+                      <label>Peso (kg)</label>
+                      <input v-model.number="forms.product.weightKg" type="number" min="0" step="0.1" class="form-control form-control-sm" :disabled="isProcessing" />
+                    </div>
+                  </div>
+                  <div class="col-md-2">
+                    <div class="form-check" style="margin-top:1.6rem">
+                      <input v-model="forms.product.published" type="checkbox" id="product-published" class="form-check-input" :disabled="isProcessing" />
+                      <label for="product-published" class="form-check-label">Publicar en tienda</label>
+                    </div>
+                  </div>
+                </div>
               </form>
 
               <!-- Table -->
@@ -212,6 +242,22 @@
                               <option value="" disabled>Categoría</option>
                               <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
                             </select>
+                          </div>
+                          <div class="col-md-5">
+                            <textarea v-model.trim="editingData.description" class="form-control form-control-sm" rows="1" placeholder="Descripción" :disabled="isProcessing"></textarea>
+                          </div>
+                          <div class="col-md-3">
+                            <input type="file" accept="image/*" class="form-control form-control-sm" :disabled="isProcessing || isUploadingImage"
+                              @change="handleImageUpload($event, editingData)" />
+                          </div>
+                          <div class="col-md-2">
+                            <input v-model.number="editingData.weightKg" type="number" min="0" step="0.1" class="form-control form-control-sm" placeholder="Peso (kg)" :disabled="isProcessing" />
+                          </div>
+                          <div class="col-md-2">
+                            <div class="form-check" style="margin-top:.4rem">
+                              <input v-model="editingData.published" type="checkbox" id="product-edit-published" class="form-check-input" :disabled="isProcessing" />
+                              <label for="product-edit-published" class="form-check-label">Publicar</label>
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -376,7 +422,7 @@
 <script>
 import BaseLayout from './BaseLayout.vue'
 import { getAllCategories, addCategory, deleteCategory, editCategory } from '../services/categoryService'
-import { getAllProducts, addProduct, deleteProduct, editProduct } from '../services/productService'
+import { getAllProducts, addProduct, deleteProduct, editProduct, uploadImage } from '../services/productService'
 import { getAllSizes, addSize, deleteSize, editSize } from '../services/sizeService'
 import { register } from '../services/authService'
 
@@ -389,7 +435,7 @@ export default {
       categories: [], products: [], sizes: [],
       forms: {
         category: { name: '' },
-        product: { name: '', price: '', priceCash: '', categoryId: '' },
+        product: { name: '', price: '', priceCash: '', categoryId: '', description: '', imageUrl: '', published: false, weightKg: '' },
         size: { name: '' },
         user: { username: '', password: '', role: 'USER' }
       },
@@ -397,7 +443,7 @@ export default {
       filters: { productSearch: '', sizeSearch: '' },
       productPage: 1,
       productPageSize: 10,
-      isLoading: false, isProcessing: false,
+      isLoading: false, isProcessing: false, isUploadingImage: false,
       errors: {},
       toast: { show: false, type: 'success', message: '' }
     }
@@ -474,11 +520,25 @@ export default {
       this.isProcessing = true
       try {
         await addProduct(this.forms.product)
-        this.forms.product = { name: '', price: '', priceCash: '', categoryId: '' }
+        this.forms.product = { name: '', price: '', priceCash: '', categoryId: '', description: '', imageUrl: '', published: false, weightKg: '' }
         await this.fetchProducts()
         this.showToast('success', 'Producto agregado')
       } catch { this.showToast('error', 'Error al agregar') }
       finally { this.isProcessing = false }
+    },
+
+    async handleImageUpload(event, target) {
+      const file = event.target.files?.[0]
+      if (!file) return
+      this.isUploadingImage = true
+      try {
+        const res = await uploadImage(file, 'products')
+        target.imageUrl = res.data.url
+      } catch {
+        this.showToast('error', 'Error al subir la imagen')
+      } finally {
+        this.isUploadingImage = false
+      }
     },
 
     async handleAddSize() {
@@ -496,7 +556,10 @@ export default {
     startEdit(type, item) {
       this.editingId = item.id; this.editingType = type
       if (type === 'product') {
-        this.editingData = { name: item.name, price: item.price, priceCash: item.priceCash, categoryId: item.category?.id || '' }
+        this.editingData = {
+          name: item.name, price: item.price, priceCash: item.priceCash, categoryId: item.category?.id || '',
+          description: item.description || '', imageUrl: item.imageUrl || '', published: item.published || false, weightKg: item.weightKg || ''
+        }
       } else {
         this.editingName = item.name
       }

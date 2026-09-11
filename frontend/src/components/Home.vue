@@ -47,7 +47,7 @@
           </div>
           <div class="d-flex align-items-center gap-2">
             <span class="pending-badge">{{ pendingSales.length }} venta(s) · {{ pendingItemsTotal }} ítem(s)</span>
-            <router-link to="/sales" class="pending-link">Ver en Ventas →</router-link>
+            <router-link to="/admin/sales" class="pending-link">Ver en Ventas →</router-link>
           </div>
         </div>
         <div class="pending-list">
@@ -66,7 +66,7 @@
 
       <!-- Nav cards -->
       <div class="nav-cards">
-        <router-link to="/admin" class="nav-card">
+        <router-link to="/admin/panel" class="nav-card">
           <div class="nav-card-icon">◈</div>
           <div class="nav-card-body">
             <h3>Administración</h3>
@@ -75,7 +75,7 @@
           <div class="nav-card-arrow">→</div>
         </router-link>
 
-        <router-link to="/stock" class="nav-card">
+        <router-link to="/admin/stock" class="nav-card">
           <div class="nav-card-icon">▦</div>
           <div class="nav-card-body">
             <h3>Stock</h3>
@@ -84,7 +84,7 @@
           <div class="nav-card-arrow">→</div>
         </router-link>
 
-        <router-link to="/sales" class="nav-card nav-card-highlight">
+        <router-link to="/admin/sales" class="nav-card nav-card-highlight">
           <div class="nav-card-icon">◉</div>
           <div class="nav-card-body">
             <h3>Ventas</h3>

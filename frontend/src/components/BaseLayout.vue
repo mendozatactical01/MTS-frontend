@@ -10,27 +10,44 @@
 
       <nav class="sidebar-nav">
         <div class="nav-section-label">Sistema</div>
-        <router-link to="/" class="nav-item" @click="sidebarOpen = false">
+        <router-link to="/admin" class="nav-item" @click="sidebarOpen = false">
           <span class="nav-icon">⌂</span><span>Inicio</span>
         </router-link>
 
         <div class="nav-section-label">Gestión</div>
-        <router-link to="/admin" class="nav-item" @click="sidebarOpen = false">
+        <router-link to="/admin/panel" class="nav-item" @click="sidebarOpen = false">
           <span class="nav-icon">◈</span><span>Administración</span>
         </router-link>
-        <router-link to="/stock" class="nav-item" @click="sidebarOpen = false">
+        <router-link to="/admin/stock" class="nav-item" @click="sidebarOpen = false">
           <span class="nav-icon">▦</span><span>Stock</span>
         </router-link>
-        <router-link to="/sales" class="nav-item" @click="sidebarOpen = false">
+        <router-link to="/admin/sales" class="nav-item" @click="sidebarOpen = false">
           <span class="nav-icon">◉</span><span>Ventas</span>
           <span v-if="pendingCount > 0" class="nav-pending-badge">{{ pendingCount }}</span>
         </router-link>
 
+        <div class="nav-section-label">Tienda Online</div>
+        <router-link to="/admin/combos" class="nav-item" @click="sidebarOpen = false">
+          <span class="nav-icon">▣</span><span>Combos</span>
+        </router-link>
+        <router-link to="/admin/shipping-zones" class="nav-item" @click="sidebarOpen = false">
+          <span class="nav-icon">➤</span><span>Envíos</span>
+        </router-link>
+        <router-link to="/admin/online-orders" class="nav-item" @click="sidebarOpen = false">
+          <span class="nav-icon">⛁</span><span>Pedidos Online</span>
+        </router-link>
+
         <div class="nav-section-label">Reportes</div>
-        <router-link to="/statistics" class="nav-item" @click="sidebarOpen = false">
+        <router-link to="/admin/statistics" class="nav-item" @click="sidebarOpen = false">
           <span class="nav-icon">◎</span><span>Estadísticas</span>
         </router-link>
       </nav>
+
+      <div class="sidebar-store-link">
+        <router-link to="/" class="nav-item" @click="sidebarOpen = false">
+          <span class="nav-icon">⇪</span><span>Ver tienda online</span>
+        </router-link>
+      </div>
 
       <div class="sidebar-footer">
         <div class="sidebar-footer-text">
@@ -73,7 +90,16 @@ export default {
   data() { return { sidebarOpen: false, currentTime: '', pendingCount: 0 } },
   computed: {
     pageTitle() {
-      const t = { '/': 'Inicio', '/admin': 'Administración', '/stock': 'Stock', '/sales': 'Ventas', '/statistics': 'Estadísticas' }
+      const t = {
+        '/admin': 'Inicio',
+        '/admin/panel': 'Administración',
+        '/admin/stock': 'Stock',
+        '/admin/sales': 'Ventas',
+        '/admin/statistics': 'Estadísticas',
+        '/admin/combos': 'Combos',
+        '/admin/shipping-zones': 'Zonas de Envío',
+        '/admin/online-orders': 'Pedidos Online'
+      }
       return t[this.$route?.path] || 'MTS'
     }
   },
@@ -163,6 +189,8 @@ export default {
   padding: 0.1rem 0.45rem;
   letter-spacing: 0.04em;
 }
+
+.sidebar-store-link { border-top: 1px solid var(--border); padding: 0.5rem 0; }
 
 .sidebar-footer { padding: 0.75rem 1rem; border-top: 1px solid var(--border); }
 .sidebar-footer-text { font-size: 0.72rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem; }
