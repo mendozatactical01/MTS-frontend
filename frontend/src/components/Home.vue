@@ -38,6 +38,32 @@
         </div>
       </div>
 
+      <!-- Entregas pendientes -->
+      <div v-if="pendingSales.length > 0" class="pending-card mb-4">
+        <div class="pending-card-header">
+          <div class="d-flex align-items-center gap-2">
+            <span class="pending-icon">⏳</span>
+            <span class="pending-title">Entregas Pendientes</span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="pending-badge">{{ pendingSales.length }} venta(s) · {{ pendingItemsTotal }} ítem(s)</span>
+            <router-link to="/sales" class="pending-link">Ver en Ventas →</router-link>
+          </div>
+        </div>
+        <div class="pending-list">
+          <div v-for="sale in pendingSales" :key="sale.id" class="pending-row">
+            <div class="pending-row-left">
+              <span class="pending-customer">{{ sale.customerName }}</span>
+              <span class="pending-date">{{ formatDate(sale.saleDate) }}</span>
+            </div>
+            <div class="pending-row-right">
+              <span class="pending-items-count">{{ pendingCount(sale) }} ítem(s) pendiente(s)</span>
+              <span class="pending-total">${{ formatMoney(sale.total) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Nav cards -->
       <div class="nav-cards">
         <router-link to="/admin" class="nav-card">
@@ -73,6 +99,8 @@
 
 <script>
 import BaseLayout from './BaseLayout.vue'
+import axios from 'axios'
+import { getPendingSales } from '../services/saleService'
 
 export default {
   name: 'Home',
@@ -80,12 +108,19 @@ export default {
   data() {
     return {
       stats: null,
+      pendingSales: [],
       today: { day: '', month: '', year: '' }
+    }
+  },
+  computed: {
+    pendingItemsTotal() {
+      return this.pendingSales.reduce((sum, s) => sum + s.items.filter(i => i.deliveryStatus === 'PENDIENTE').length, 0)
     }
   },
   mounted() {
     this.setDate()
     this.loadStats()
+    this.loadPendingSales()
   },
   methods: {
     setDate() {
@@ -98,9 +133,22 @@ export default {
     },
     async loadStats() {
       try {
-        const res = await fetch(import.meta.env.VITE_API_URL + '/api/statistics/today')
-        if (res.ok) this.stats = await res.json()
+        const res = await axios.get(import.meta.env.VITE_API_URL + '/api/statistics/today')
+        this.stats = res.data
       } catch {}
+    },
+    async loadPendingSales() {
+      try {
+        const res = await getPendingSales()
+        this.pendingSales = res.data || []
+      } catch {}
+    },
+    pendingCount(sale) {
+      return sale.items?.filter(i => i.deliveryStatus === 'PENDIENTE').length || 0
+    },
+    formatDate(d) {
+      if (!d) return '—'
+      return new Date(d).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
     },
     formatMoney(val) {
       return Number(val || 0).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
@@ -273,5 +321,75 @@ export default {
   .stats-grid, .nav-cards { grid-template-columns: 1fr; }
   .home-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
   .home-title { font-size: 2rem; }
+}
+
+/* Pending deliveries card */
+.pending-card {
+  background: var(--bg-card);
+  border: 1px solid rgba(201, 125, 44, 0.4);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.pending-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.25rem;
+  background: rgba(201, 125, 44, 0.08);
+  border-bottom: 1px solid rgba(201, 125, 44, 0.2);
+}
+.pending-icon { font-size: 1rem; }
+.pending-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--amber-light);
+}
+.pending-badge {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+.pending-link {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--amber-light);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.pending-link:hover { color: #fff; }
+.pending-list { display: flex; flex-direction: column; }
+.pending-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.12s;
+}
+.pending-row:last-child { border-bottom: none; }
+.pending-row:hover { background: var(--bg-hover); }
+.pending-row-left { display: flex; align-items: center; gap: 0.75rem; }
+.pending-customer { font-weight: 600; font-size: 0.875rem; color: var(--text-primary); }
+.pending-date { font-size: 0.75rem; color: var(--text-muted); }
+.pending-row-right { display: flex; align-items: center; gap: 1rem; }
+.pending-items-count {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--amber-light);
+  letter-spacing: 0.03em;
+}
+.pending-total {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--text-primary);
 }
 </style>

@@ -63,37 +63,95 @@
           </div>
         </div>
 
-        <!-- Desglose por medio de pago -->
-        <div v-if="data.paymentBreakdown" class="payment-breakdown mb-4">
-          <div class="pb-card pb-cash">
-            <div class="pb-label">💵 Efectivo / Transf.</div>
-            <div class="pb-value">${{ formatMoney(data.paymentBreakdown.cash) }}</div>
+        <!-- Desglose visual por medio de pago -->
+        <div v-if="data.paymentBreakdown" class="tac-card mb-4">
+          <div class="tac-card-header">
+            <h5>◑ Medios de Pago</h5>
+            <span class="badge badge-neutral">{{ periodLabel }}</span>
           </div>
-          <div class="pb-plus">+</div>
-          <div class="pb-card pb-card">
-            <div class="pb-label">💳 Tarjeta</div>
-            <div class="pb-value">${{ formatMoney(data.paymentBreakdown.card) }}</div>
-          </div>
-          <div class="pb-plus">=</div>
-          <div class="pb-card pb-total">
-            <div class="pb-label">Total Combinado</div>
-            <div class="pb-value">${{ formatMoney(data.paymentBreakdown.combined) }}</div>
+          <div class="tac-card-body">
+            <!-- Fila de totales individuales -->
+            <div class="pb-totals-row">
+              <div class="pb-total-block pb-block-cash">
+                <div class="pb-block-icon">💵</div>
+                <div class="pb-block-body">
+                  <div class="pb-block-label">Efectivo / Transferencia</div>
+                  <div class="pb-block-amount">${{ formatMoney(data.paymentBreakdown.cash) }}</div>
+                  <div class="pb-block-pct">{{ cashPct.toFixed(1) }}% del total</div>
+                </div>
+              </div>
+              <div class="pb-plus-sign">+</div>
+              <div class="pb-total-block pb-block-card">
+                <div class="pb-block-icon">💳</div>
+                <div class="pb-block-body">
+                  <div class="pb-block-label">Tarjeta</div>
+                  <div class="pb-block-amount">${{ formatMoney(data.paymentBreakdown.card) }}</div>
+                  <div class="pb-block-pct">{{ cardPct.toFixed(1) }}% del total</div>
+                </div>
+              </div>
+              <div class="pb-plus-sign">=</div>
+              <div class="pb-total-block pb-block-total">
+                <div class="pb-block-icon">∑</div>
+                <div class="pb-block-body">
+                  <div class="pb-block-label">Total General</div>
+                  <div class="pb-block-amount pb-block-amount-total">${{ formatMoney(data.paymentBreakdown.combined) }}</div>
+                  <div class="pb-block-pct">100%</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Barra apilada proporcional -->
+            <div class="pb-bar-section" v-if="data.paymentBreakdown.combined > 0">
+              <div class="payment-stacked-bar">
+                <div
+                  class="psb-seg psb-cash"
+                  :style="{ width: cashPct + '%' }"
+                  :title="`Efectivo: ${cashPct.toFixed(1)}%`"
+                >
+                  <span v-if="cashPct >= 10">{{ cashPct.toFixed(0) }}%</span>
+                </div>
+                <div
+                  class="psb-seg psb-card"
+                  :style="{ width: cardPct + '%' }"
+                  :title="`Tarjeta: ${cardPct.toFixed(1)}%`"
+                >
+                  <span v-if="cardPct >= 10">{{ cardPct.toFixed(0) }}%</span>
+                </div>
+              </div>
+              <div class="psb-legend">
+                <span class="psb-legend-dot psb-dot-cash"></span> Efectivo / Transf.
+                <span class="psb-legend-dot psb-dot-card" style="margin-left:1rem"></span> Tarjeta
+                <span style="margin-left:auto;font-family:var(--font-display);font-size:.75rem;color:var(--text-muted)">
+                  Predomina: <strong style="color:var(--text-primary)">{{ cashPct >= cardPct ? '💵 Efectivo' : '💳 Tarjeta' }}</strong>
+                </span>
+              </div>
+            </div>
+            <div v-else class="psb-empty">Sin transacciones en el período</div>
           </div>
         </div>
 
         <div class="stats-grid-2">
-          <!-- Top productos -->
+          <!-- Top productos más vendidos -->
           <div class="tac-card" v-if="data.topProducts && data.topProducts.length">
-            <div class="tac-card-header"><h5>Top Productos</h5></div>
-            <div class="tac-card-body" style="padding:0">
-              <div v-for="(p, i) in data.topProducts" :key="i" class="top-product-row">
-                <div class="top-rank">#{{ i + 1 }}</div>
-                <div class="top-name">{{ p.name }}</div>
-                <div class="top-qty">
-                  <span class="badge badge-crimson">{{ p.qty }} uds</span>
+            <div class="tac-card-header">
+              <h5>▲ Más Vendidos</h5>
+              <span class="badge badge-neutral">{{ periodLabel }}</span>
+            </div>
+            <div class="tac-card-body top-products-body">
+              <div v-for="(p, i) in data.topProducts" :key="i" class="top-product-item">
+                <!-- Encabezado: rank + nombre + cantidad -->
+                <div class="tpi-header">
+                  <span class="tpi-rank" :class="i === 0 ? 'rank-gold' : i === 1 ? 'rank-silver' : i === 2 ? 'rank-bronze' : 'rank-plain'">
+                    {{ i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i+1}` }}
+                  </span>
+                  <span class="tpi-name">{{ p.name }}</span>
+                  <span class="tpi-qty">{{ p.qty }} uds</span>
                 </div>
-                <div class="top-bar-wrap">
-                  <div class="top-bar" :style="{ width: barWidth(p.qty, data.topProducts) + '%' }"></div>
+                <!-- Barra horizontal prominente -->
+                <div class="tpi-bar-outer">
+                  <div class="tpi-bar-inner" :style="{ width: barWidth(p.qty, data.topProducts) + '%' }">
+                  </div>
+                  <span class="tpi-bar-label">{{ barWidth(p.qty, data.topProducts).toFixed(0) }}%</span>
                 </div>
               </div>
             </div>
@@ -217,6 +275,22 @@ export default {
     yearTransactions() {
       if (!this.data?.salesByMonth) return 0
       return this.data.salesByMonth.reduce((s, m) => s + m.transactions, 0)
+    },
+    cashPct() {
+      const cash = this.data?.paymentBreakdown?.cash || 0
+      const card = this.data?.paymentBreakdown?.card || 0
+      const total = cash + card
+      return total > 0 ? (cash / total) * 100 : 0
+    },
+    cardPct() {
+      return 100 - this.cashPct
+    },
+    periodLabel() {
+      if (this.period === 'today')  return 'Hoy'
+      if (this.period === 'month')  return 'Este mes'
+      if (this.period === 'year')   return 'Este año'
+      if (this.period === 'range' && this.rangeFrom && this.rangeTo) return `${this.rangeFrom} → ${this.rangeTo}`
+      return 'Rango'
     }
   },
   mounted() { this.loadAll() },
@@ -317,18 +391,42 @@ export default {
 }
 
 /* Top products */
-.top-product-row {
-  display: flex; align-items: center; gap: 0.75rem;
-  padding: 0.65rem 1.25rem; border-bottom: 1px solid var(--border);
-  transition: background 0.12s;
+.top-products-body { padding: 0.75rem 1rem; display: flex; flex-direction: column; gap: 0.75rem; }
+
+.top-product-item { display: flex; flex-direction: column; gap: 0.3rem; }
+
+.tpi-header { display: flex; align-items: center; gap: 0.6rem; }
+.tpi-rank { font-size: 1rem; flex-shrink: 0; width: 28px; text-align: center; }
+.rank-plain { font-family: var(--font-display); font-weight: 800; color: var(--text-muted); font-size: 0.85rem; }
+.tpi-name { flex: 1; font-size: 0.88rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tpi-qty { font-family: var(--font-display); font-weight: 700; font-size: 0.82rem; color: var(--crimson-light); flex-shrink: 0; }
+
+.tpi-bar-outer {
+  position: relative;
+  height: 22px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-left: 34px;
 }
-.top-product-row:last-child { border-bottom: none; }
-.top-product-row:hover { background: var(--bg-hover); }
-.top-rank { font-family: var(--font-display); font-weight: 800; font-size: 1rem; color: var(--crimson); width: 28px; flex-shrink: 0; }
-.top-name { flex: 1; font-weight: 500; font-size: 0.88rem; }
-.top-qty { flex-shrink: 0; }
-.top-bar-wrap { width: 80px; flex-shrink: 0; }
-.top-bar { height: 4px; background: var(--crimson); border-radius: 2px; transition: width 0.5s ease; }
+.tpi-bar-inner {
+  height: 100%;
+  background: linear-gradient(90deg, var(--crimson-dark), var(--crimson-light));
+  border-radius: var(--radius-sm);
+  transition: width 0.6s ease;
+  min-width: 4px;
+}
+.tpi-bar-label {
+  position: absolute;
+  right: 0.4rem; top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  mix-blend-mode: difference;
+}
 
 /* Bar chart */
 .bar-chart {
@@ -345,35 +443,77 @@ export default {
 .bar-label-bot { font-size: 0.65rem; color: var(--text-muted); font-family: var(--font-display); font-weight: 700; }
 
 /* Payment breakdown */
-.payment-breakdown {
-  display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+.pb-totals-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
 }
-.pb-card {
-  background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); padding: 1rem 1.5rem; flex: 1; min-width: 160px;
+.pb-plus-sign {
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 800; font-size: 1.4rem;
+  color: var(--text-muted); flex-shrink: 0; padding: 0 0.15rem;
 }
-.pb-cash { border-top: 2px solid #22c55e; }
-.pb-total { border-top: 2px solid var(--crimson); }
-.pb-label {
+.pb-total-block {
+  flex: 1; min-width: 140px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 0.9rem 1rem;
+  display: flex; align-items: center; gap: 0.75rem;
+}
+.pb-block-cash  { border-top: 3px solid #22c55e; }
+.pb-block-card  { border-top: 3px solid var(--crimson-light); }
+.pb-block-total { border-top: 3px solid var(--amber); background: var(--bg-card); }
+.pb-block-icon { font-size: 1.5rem; flex-shrink: 0; }
+.pb-block-body { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+.pb-block-label {
   font-family: var(--font-display); font-size: 0.7rem; font-weight: 700;
-  letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.3rem;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted);
 }
-.pb-value {
-  font-family: var(--font-display); font-size: 1.6rem; font-weight: 800; color: var(--text-primary);
+.pb-block-amount {
+  font-family: var(--font-display); font-weight: 800; font-size: 1.35rem;
+  color: var(--text-primary); line-height: 1.1;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.pb-total .pb-value { color: var(--crimson-light); }
-.pb-plus {
-  font-family: var(--font-display); font-size: 1.5rem; font-weight: 800;
-  color: var(--text-muted); flex-shrink: 0;
+.pb-block-amount-total { color: var(--amber-light); font-size: 1.5rem; }
+.pb-block-pct { font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-display); }
+
+/* Barra apilada */
+.pb-bar-section { margin-top: 0.25rem; }
+.payment-stacked-bar {
+  display: flex; height: 36px; border-radius: var(--radius);
+  overflow: hidden; border: 1px solid var(--border);
 }
+.psb-seg {
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 700; font-size: 0.82rem;
+  color: rgba(255,255,255,0.92); transition: width 0.6s ease; min-width: 0;
+  white-space: nowrap; overflow: hidden;
+}
+.psb-cash { background: #22c55e; }
+.psb-card { background: var(--crimson-light); }
+.psb-empty { color: var(--text-muted); font-size: 0.82rem; padding: 0.5rem 0; }
+.psb-legend {
+  margin-top: 0.5rem; font-size: 0.75rem;
+  font-family: var(--font-display); color: var(--text-secondary);
+  display: flex; align-items: center;
+}
+.psb-legend-dot {
+  display: inline-block; width: 8px; height: 8px;
+  border-radius: 2px; margin-right: 0.3rem;
+}
+.psb-dot-cash { background: #22c55e; }
+.psb-dot-card { background: var(--crimson-light); }
 
 @media (max-width: 900px) {
   .kpi-grid { grid-template-columns: 1fr 1fr; }
   .stats-grid-2 { grid-template-columns: 1fr; }
+  .payment-visual-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 500px) {
   .kpi-grid { grid-template-columns: 1fr; }
-  .payment-breakdown { flex-direction: column; }
-  .pb-plus { display: none; }
+  .top-name { width: 100px; }
 }
 </style>

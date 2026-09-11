@@ -12,10 +12,18 @@
       <!-- Buscadores -->
       <div class="row g-2 mb-3">
         <div class="col-md-6">
-          <input v-model="filters.productSearch" class="form-control" placeholder="🔍 Filtrar producto..." />
+          <div class="search-wrapper">
+            <span class="search-icon">⌕</span>
+            <input v-model="filters.productSearch" class="form-control search-input" placeholder="Buscar producto o categoría..." />
+            <button v-if="filters.productSearch" class="search-clear" @click="filters.productSearch = ''">✕</button>
+          </div>
         </div>
         <div class="col-md-6">
-          <input v-model="filters.sizeSearch" class="form-control" placeholder="🔍 Filtrar talle..." />
+          <div class="search-wrapper">
+            <span class="search-icon">⌕</span>
+            <input v-model="filters.sizeSearch" class="form-control search-input" placeholder="Filtrar talle (ej: S, M, 40...)" />
+            <button v-if="filters.sizeSearch" class="search-clear" @click="filters.sizeSearch = ''">✕</button>
+          </div>
         </div>
       </div>
 
@@ -88,9 +96,102 @@
         </div>
       </div>
 
+      <!-- Carga múltiple -->
+      <div class="tac-card mb-3">
+        <div class="tac-card-header bulk-header" @click="bulkLoad.show = !bulkLoad.show">
+          <div class="d-flex align-items-center gap-2">
+            <span class="category-chevron" :class="{ collapsed: !bulkLoad.show }">▼</span>
+            <h5 style="margin:0">⊞ Carga Múltiple de Stock</h5>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span v-if="bulkLoad.rows.length" class="badge badge-neutral">{{ bulkLoad.rows.length }} fila(s)</span>
+            <span class="badge badge-neutral">{{ bulkLoad.show ? 'Ocultar' : 'Expandir' }}</span>
+          </div>
+        </div>
+
+        <div v-show="bulkLoad.show">
+          <div class="tac-card-body" style="padding-bottom:.5rem">
+            <!-- Tabla de filas -->
+            <div v-if="bulkLoad.rows.length" class="table-responsive mb-2">
+              <table class="tac-table">
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th style="width:150px">Talle</th>
+                    <th style="width:110px">Cantidad</th>
+                    <th class="text-center" style="width:64px">Estado</th>
+                    <th style="width:40px"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(row, i) in bulkLoad.rows" :key="i" :class="row.status === 'ok' ? 'bulk-row-ok' : row.status === 'error' ? 'bulk-row-error' : ''">
+                    <td>
+                      <select v-model.number="row.productId" class="form-select form-select-sm" :disabled="isBulkProcessing">
+                        <option value="" disabled>Seleccionar producto</option>
+                        <option v-for="p in products" :key="p.id" :value="p.id">{{ p.name }}</option>
+                      </select>
+                    </td>
+                    <td>
+                      <select v-model.number="row.sizeId" class="form-select form-select-sm" :disabled="isBulkProcessing">
+                        <option value="">Sin talle</option>
+                        <option v-for="s in sizes" :key="s.id" :value="s.id">{{ s.name }}</option>
+                      </select>
+                    </td>
+                    <td>
+                      <input v-model.number="row.quantity" type="number" min="1" class="form-control form-control-sm"
+                        :disabled="isBulkProcessing" placeholder="1" />
+                    </td>
+                    <td class="text-center">
+                      <span v-if="row.status === null" style="color:var(--text-muted)">—</span>
+                      <span v-else-if="row.status === 'ok'" class="bulk-status-ok" title="OK">✓</span>
+                      <span v-else class="bulk-status-error" :title="row.error">✕</span>
+                    </td>
+                    <td class="text-center">
+                      <button class="btn btn-sm btn-danger btn-icon" @click="removeBulkRow(i)" :disabled="isBulkProcessing">✕</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div v-else class="bulk-empty">
+              Agregá filas para cargar stock en varios productos a la vez.
+            </div>
+
+            <!-- Acciones -->
+            <div class="bulk-actions">
+              <button class="btn btn-secondary btn-sm" @click="addBulkRow" :disabled="isBulkProcessing">
+                + Agregar fila
+              </button>
+              <div class="d-flex gap-2 align-items-center">
+                <span v-if="bulkSummary" class="bulk-summary-text" :class="bulkSummary.err ? 'bulk-summary-err' : 'bulk-summary-ok'">
+                  {{ bulkSummary.text }}
+                </span>
+                <button class="btn btn-secondary btn-sm" @click="clearBulkLoad"
+                  :disabled="isBulkProcessing || !bulkLoad.rows.length">Limpiar</button>
+                <button class="btn btn-primary" @click="applyBulkLoad"
+                  :disabled="!canApplyBulk || isBulkProcessing">
+                  <span v-if="isBulkProcessing" class="spinner spinner-sm"></span>
+                  <span v-else>✓ Aplicar todo</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Tabla por categoría -->
       <div class="tac-card">
-        <div class="tac-card-header"><h5>Inventario por Categoría</h5></div>
+        <div class="tac-card-header">
+          <h5>Inventario por Categoría</h5>
+          <div class="d-flex gap-2 align-items-center">
+            <span style="font-size:.75rem;color:var(--text-muted);font-family:var(--font-display)">
+              {{ Object.keys(stockByCategory).length }} categorías
+            </span>
+            <button class="btn btn-sm btn-secondary" @click="expandAll" title="Expandir todo">↕ Expandir</button>
+            <button class="btn btn-sm btn-secondary" @click="collapseAll" title="Colapsar todo">↕ Colapsar</button>
+          </div>
+        </div>
         <div class="tac-card-body" style="padding:0">
           <div v-if="isLoading" class="empty-state">
             <div class="spinner" style="margin:0 auto 1rem"></div>
@@ -102,11 +203,19 @@
           </div>
           <div v-else>
             <div v-for="(prods, category) in stockByCategory" :key="category" class="category-block">
-              <div class="category-header">
-                <span class="category-name">{{ category }}</span>
-                <span class="badge badge-neutral">{{ prods.length }} producto(s)</span>
+              <div class="category-header category-header-clickable" @click="toggleCategory(category)">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="category-chevron" :class="{ collapsed: collapsedCategories[category] }">▼</span>
+                  <span class="category-name">{{ category }}</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                  <span class="badge badge-neutral">{{ prods.length }} producto(s)</span>
+                  <span class="badge" :class="categoryStockStatus(prods)">
+                    {{ categoryStockLabel(prods) }}
+                  </span>
+                </div>
               </div>
-              <div class="table-responsive">
+              <div v-show="!collapsedCategories[category]" class="table-responsive">
                 <table class="tac-table">
                   <thead>
                     <tr>
@@ -245,7 +354,10 @@ export default {
     return {
       stock: [], products: [], sizes: [],
       filters: { productSearch: '', sizeSearch: '' },
+      collapsedCategories: {},
       adjustForm: { productId: '', sizeId: '', quantity: 1, action: 'add' },
+      bulkLoad: { show: false, rows: [] },
+      isBulkProcessing: false,
       cellModal: { show: false, product: null, size: null, newQuantity: 0 },
       detailModal: { show: false, product: null },
       isLoading: false, isProcessing: false,
@@ -284,7 +396,18 @@ export default {
       return this.getStockQty(this.cellModal.product.id, this.cellModal.size?.id || null)
     },
     cellDiff() { return this.cellModal.newQuantity - this.cellEditorCurrentStock },
-    canSaveCellEdit() { return this.cellModal.newQuantity >= 0 && this.cellDiff !== 0 }
+    canSaveCellEdit() { return this.cellModal.newQuantity >= 0 && this.cellDiff !== 0 },
+    canApplyBulk() {
+      return this.bulkLoad.rows.length > 0 &&
+        this.bulkLoad.rows.every(r => r.productId && r.quantity >= 1)
+    },
+    bulkSummary() {
+      const processed = this.bulkLoad.rows.filter(r => r.status !== null)
+      if (!processed.length) return null
+      const ok  = processed.filter(r => r.status === 'ok').length
+      const err = processed.filter(r => r.status === 'error').length
+      return { ok, err, text: err ? `${ok} OK · ${err} con error` : `${ok} filas aplicadas` }
+    }
   },
   mounted() { this.initializeData() },
   methods: {
@@ -308,27 +431,27 @@ export default {
     },
     stockBadgeClass(productId, sizeId) {
       const q = this.getStockQty(productId, sizeId)
-      if (q === 0)  return 'badge-red'
-      if (q < 5)    return 'badge-amber'
-      if (q < 10)   return 'badge-steel'
-      return 'badge-crimson'
+      if (q < 3)  return 'badge-red'
+      if (q <= 6) return 'badge-amber'
+      return 'badge-green'
     },
     stockLevelClass(val) {
       if (val === '-') return ''
-      if (val === 0)   return 'stock-zero'
-      if (val < 5)     return 'stock-low'
+      if (val < 3)    return 'stock-zero'
+      if (val <= 6)   return 'stock-low'
       return 'stock-ok'
     },
     stockStatusClass(productId, sizeId) {
       const q = this.getStockQty(productId, sizeId)
-      if (q === 0) return 'text-danger'
-      if (q < 5)   return 'text-warning'
+      if (q < 3)  return 'text-danger'
+      if (q <= 6) return 'text-warning'
       return 'text-success'
     },
     stockStatusText(productId, sizeId) {
       const q = this.getStockQty(productId, sizeId)
       if (q === 0) return '⚠ Sin stock'
-      if (q < 5)   return '⚠ Bajo'
+      if (q < 3)   return '⚠ Crítico'
+      if (q <= 6)  return '⚡ Bajo'
       return '✓ OK'
     },
 
@@ -406,6 +529,59 @@ export default {
       finally { this.isProcessing = false }
     },
 
+    toggleCategory(cat) {
+      this.collapsedCategories = { ...this.collapsedCategories, [cat]: !this.collapsedCategories[cat] }
+    },
+    expandAll() {
+      this.collapsedCategories = {}
+    },
+    collapseAll() {
+      const collapsed = {}
+      Object.keys(this.stockByCategory).forEach(cat => { collapsed[cat] = true })
+      this.collapsedCategories = collapsed
+    },
+    categoryStockStatus(prods) {
+      const totals = prods.map(p => this.productTotal(p.id))
+      if (totals.some(t => t < 3))          return 'badge-red'
+      if (totals.some(t => t <= 6))         return 'badge-amber'
+      return 'badge-green'
+    },
+    categoryStockLabel(prods) {
+      const totals = prods.map(p => this.productTotal(p.id))
+      const total = totals.reduce((a, b) => a + b, 0)
+      if (totals.some(t => t < 3))  return `⚠ ${total} uds`
+      if (totals.some(t => t <= 6)) return `⚡ ${total} uds`
+      return `✓ ${total} uds`
+    },
+    addBulkRow() {
+      this.bulkLoad.rows.push({ productId: '', sizeId: '', quantity: 1, status: null, error: '' })
+    },
+    removeBulkRow(i) {
+      this.bulkLoad.rows.splice(i, 1)
+    },
+    clearBulkLoad() {
+      this.bulkLoad.rows = []
+    },
+    async applyBulkLoad() {
+      this.isBulkProcessing = true
+      this.bulkLoad.rows.forEach(r => { r.status = null; r.error = '' })
+      await Promise.all(
+        this.bulkLoad.rows.map(async (row, i) => {
+          try {
+            await addStock(row.productId, row.sizeId || null, row.quantity)
+            this.bulkLoad.rows[i] = { ...this.bulkLoad.rows[i], status: 'ok' }
+          } catch (e) {
+            this.bulkLoad.rows[i] = { ...this.bulkLoad.rows[i], status: 'error', error: e.response?.data?.message || 'Error' }
+          }
+        })
+      )
+      await this.fetchStock()
+      const ok  = this.bulkLoad.rows.filter(r => r.status === 'ok').length
+      const err = this.bulkLoad.rows.filter(r => r.status === 'error').length
+      this.showToast(err === 0 ? 'success' : 'error', err === 0 ? `${ok} productos actualizados` : `${ok} OK, ${err} fallaron`)
+      this.isBulkProcessing = false
+    },
+
     openDetailModal(product) { this.detailModal = { show: true, product } },
     closeDetailModal() { this.detailModal = { show: false, product: null } },
 
@@ -418,17 +594,61 @@ export default {
 </script>
 
 <style scoped>
+/* Search */
+.search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.search-icon {
+  position: absolute;
+  left: 0.55rem;
+  color: var(--text-muted);
+  font-size: 1rem;
+  pointer-events: none;
+  line-height: 1;
+}
+.search-input { padding-left: 1.75rem !important; padding-right: 1.75rem !important; }
+.search-clear {
+  position: absolute;
+  right: 0.5rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.7rem;
+  padding: 0;
+  line-height: 1;
+}
+.search-clear:hover { color: var(--text-primary); }
+
+/* Category collapsibles */
 .category-block { border-bottom: 1px solid var(--border); }
 .category-block:last-child { border-bottom: none; }
 
 .category-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.75rem;
   padding: 0.75rem 1.25rem;
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border);
 }
+.category-header-clickable {
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+.category-header-clickable:hover { background: var(--bg-hover); }
+
+.category-chevron {
+  font-size: 0.7rem;
+  color: var(--crimson-light);
+  transition: transform 0.2s ease;
+  display: inline-block;
+}
+.category-chevron.collapsed { transform: rotate(-90deg); }
 
 .category-name {
   font-family: var(--font-display);
@@ -465,4 +685,57 @@ export default {
 
 .toast-enter-active, .toast-leave-active { transition: all .25s ease; }
 .toast-enter-from, .toast-leave-to { opacity: 0; transform: translateY(10px); }
+
+/* Badge verde para stock OK */
+.badge-green {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+/* Carga múltiple */
+.bulk-header {
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+.bulk-header:hover { background: var(--bg-hover); }
+
+.bulk-empty {
+  text-align: center;
+  padding: 1rem;
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  font-family: var(--font-display);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 0.75rem;
+}
+
+.bulk-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--border);
+  margin-top: 0.5rem;
+}
+
+.bulk-row-ok  { background: rgba(34, 197, 94, 0.05); }
+.bulk-row-error { background: rgba(181, 50, 50, 0.08); }
+
+.bulk-status-ok    { color: #22c55e; font-weight: 700; font-size: 1rem; }
+.bulk-status-error { color: var(--red-light); font-weight: 700; font-size: 1rem; cursor: help; }
+
+.bulk-summary-text {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.bulk-summary-ok  { color: #22c55e; }
+.bulk-summary-err { color: var(--amber-light); }
+
+/* Stock level OK ahora en verde */
+.stock-ok { color: #22c55e; border-color: rgba(34, 197, 94, 0.4); }
 </style>

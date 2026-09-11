@@ -23,6 +23,7 @@
         </router-link>
         <router-link to="/sales" class="nav-item" @click="sidebarOpen = false">
           <span class="nav-icon">◉</span><span>Ventas</span>
+          <span v-if="pendingCount > 0" class="nav-pending-badge">{{ pendingCount }}</span>
         </router-link>
 
         <div class="nav-section-label">Reportes</div>
@@ -65,18 +66,30 @@
 
 <script>
 import { logout } from '../services/authService'
+import { getPendingSales } from '../services/saleService'
 
 export default {
   name: 'BaseLayout',
-  data() { return { sidebarOpen: false, currentTime: '' } },
+  data() { return { sidebarOpen: false, currentTime: '', pendingCount: 0 } },
   computed: {
     pageTitle() {
       const t = { '/': 'Inicio', '/admin': 'Administración', '/stock': 'Stock', '/sales': 'Ventas', '/statistics': 'Estadísticas' }
       return t[this.$route?.path] || 'MTS'
     }
   },
-  mounted() { this.updateTime(); setInterval(this.updateTime, 60000) },
+  mounted() {
+    this.updateTime()
+    setInterval(this.updateTime, 60000)
+    this.loadPendingCount()
+    setInterval(this.loadPendingCount, 60000)
+  },
   methods: {
+    async loadPendingCount() {
+      try {
+        const res = await getPendingSales()
+        this.pendingCount = (res.data || []).length
+      } catch {}
+    },
     updateTime() {
       this.currentTime = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
     },
@@ -137,6 +150,19 @@ export default {
 .nav-item.router-link-exact-active { color: var(--crimson-light); background: var(--crimson-glow); border-left-color: var(--crimson); }
 
 .nav-icon { font-size: 1rem; width: 18px; text-align: center; flex-shrink: 0; }
+
+.nav-pending-badge {
+  margin-left: auto;
+  background: rgba(201, 125, 44, 0.2);
+  color: var(--amber-light);
+  border: 1px solid rgba(201, 125, 44, 0.4);
+  border-radius: 10px;
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.1rem 0.45rem;
+  letter-spacing: 0.04em;
+}
 
 .sidebar-footer { padding: 0.75rem 1rem; border-top: 1px solid var(--border); }
 .sidebar-footer-text { font-size: 0.72rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem; }

@@ -29,3 +29,11 @@ export function updateSale(id, saleDTO) {
 export function deleteSale(id) {
   return axios.delete(`${API_URL}/${id}`)
 }
+
+export function getPendingSales() {
+  return axios.get(`${API_URL}/pending`)
+}
+
+export function deliverItem(itemId) {
+  return axios.patch(`${API_URL}/items/${itemId}/deliver`)
+}

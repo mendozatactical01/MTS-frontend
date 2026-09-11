@@ -6,6 +6,20 @@
         <div class="topbar-time-display">{{ currentDateTime }}</div>
       </div>
 
+      <!-- ── TABS ──────────────────────────────────────── -->
+      <div class="tac-tabs mb-3">
+        <button class="tac-tab" :class="{ active: activeTab === 'sales' }" @click="activeTab = 'sales'">
+          ◉ Ventas
+        </button>
+        <button class="tac-tab" :class="{ active: activeTab === 'pending' }" @click="switchToPending">
+          ⏳ Pendientes
+          <span v-if="pendingSales.length" class="tab-count tab-count-amber">{{ pendingSales.length }}</span>
+        </button>
+      </div>
+
+      <!-- ── PESTAÑA: VENTAS ────────────────────────────── -->
+      <div v-show="activeTab === 'sales'">
+
       <!-- ── FORMULARIO NUEVA VENTA ─────────────────────── -->
       <div class="tac-card mb-3">
         <div class="tac-card-header">
@@ -103,10 +117,11 @@
               <div class="col-md-2">
                 <div class="form-group">
                   <label>Cantidad *
-                    <span v-if="currentStockAvailable !== null" style="color:var(--text-muted)">(Stock: {{ currentStockAvailable }})</span>
+                    <span v-if="itemForm.deliverNow && currentStockAvailable !== null" style="color:var(--text-muted)">(Stock: {{ currentStockAvailable }})</span>
                   </label>
                   <input v-model.number="itemForm.quantity" type="number" min="1"
-                    :max="currentStockAvailable || undefined" class="form-control" placeholder="1"
+                    :max="itemForm.deliverNow ? (currentStockAvailable || undefined) : undefined"
+                    class="form-control" placeholder="1"
                     :disabled="!itemForm.productId || isProcessing" />
                 </div>
               </div>
@@ -125,6 +140,18 @@
                   <div class="subtotal-display">${{ itemSubtotal }}</div>
                 </div>
               </div>
+              <div class="col-md-2">
+                <div class="form-group">
+                  <label>Entrega</label>
+                  <button type="button"
+                    class="btn w-100"
+                    :class="itemForm.deliverNow ? 'btn-success-soft' : 'btn-warning-soft'"
+                    @click="itemForm.deliverNow = !itemForm.deliverNow"
+                    :disabled="isProcessing">
+                    {{ itemForm.deliverNow ? '✓ Ahora' : '⏳ Pendiente' }}
+                  </button>
+                </div>
+              </div>
               <div class="col-md-1">
                 <button type="button" class="btn btn-primary w-100" @click="handleAddItem" :disabled="!canAddItem || isProcessing">+</button>
               </div>
@@ -140,6 +167,7 @@
                   <th class="text-center">Cant.</th>
                   <th class="text-end">Precio</th>
                   <th class="text-end">Subtotal</th>
+                  <th class="text-center">Entrega</th>
                   <th class="text-center" style="width:60px"></th>
                 </tr>
               </thead>
@@ -150,6 +178,15 @@
                   <td class="text-center">{{ item.quantity }}</td>
                   <td class="text-end">${{ item.unitPrice.toFixed(2) }}</td>
                   <td class="text-end fw-bold">${{ (item.quantity * item.unitPrice).toFixed(2) }}</td>
+                  <td class="text-center">
+                    <button type="button"
+                      class="btn btn-sm"
+                      :class="item.deliverNow !== false ? 'btn-success-soft' : 'btn-warning-soft'"
+                      @click="item.deliverNow = !item.deliverNow"
+                      :disabled="isProcessing">
+                      {{ item.deliverNow !== false ? '✓ Ahora' : '⏳ Pendiente' }}
+                    </button>
+                  </td>
                   <td class="text-center">
                     <button class="btn btn-sm btn-danger btn-icon" @click="removeItem(idx)" :disabled="isProcessing">✕</button>
                   </td>
@@ -255,13 +292,26 @@
                   <td><small class="text-muted">{{ sale.observations || '—' }}</small></td>
                   <td>
                     <details>
-                      <summary class="summary-trigger">{{ sale.items?.length || 0 }} ítem(s)</summary>
+                      <summary class="summary-trigger">
+                        {{ sale.items?.length || 0 }} ítem(s)
+                        <span v-if="hasPendingItems(sale)" class="pending-dot" title="Tiene entregas pendientes">⏳</span>
+                      </summary>
                       <div class="items-detail">
                         <div v-for="item in sale.items" :key="item.id" class="item-detail-row">
                           <span class="fw-bold">{{ item.product?.name || 'N/A' }}</span>
                           <span v-if="item.size?.name" class="chip">{{ item.size.name }}</span>
                           <span class="text-muted">×{{ item.quantity }}</span>
                           <span>${{ item.unitPrice.toFixed(2) }}</span>
+                          <span class="delivery-badge" :class="item.deliveryStatus === 'PENDIENTE' ? 'delivery-pending' : 'delivery-done'">
+                            {{ item.deliveryStatus === 'PENDIENTE' ? '⏳ Pendiente' : '✓ Entregado' }}
+                          </span>
+                          <button v-if="item.deliveryStatus === 'PENDIENTE'"
+                            class="btn btn-sm btn-success-soft"
+                            style="padding:.15rem .5rem;font-size:.72rem"
+                            @click.stop="handleDeliverItem(item, sale)"
+                            :disabled="isProcessing">
+                            Entregar
+                          </button>
                         </div>
                       </div>
                     </details>
@@ -283,6 +333,84 @@
           </div>
         </div>
       </div>
+
+      </div> <!-- fin pestaña ventas -->
+
+      <!-- ── PESTAÑA: PENDIENTES ────────────────────────── -->
+      <div v-show="activeTab === 'pending'">
+        <div v-if="isPendingLoading" class="empty-state">
+          <div class="spinner" style="margin:0 auto 1rem"></div>
+          <p>Cargando pendientes...</p>
+        </div>
+
+        <div v-else-if="pendingSales.length === 0" class="empty-state">
+          <div class="empty-state-icon" style="color:var(--amber-light)">⏳</div>
+          <p>Sin entregas pendientes</p>
+        </div>
+
+        <div v-else>
+          <div v-for="sale in pendingSales" :key="sale.id" class="pending-sale-card mb-3">
+            <!-- Header de la venta -->
+            <div class="pending-sale-header">
+              <div class="d-flex align-items-center gap-3">
+                <span class="pending-sale-customer">{{ sale.customerName }}</span>
+                <span v-if="sale.customerIdentification" class="badge badge-steel">{{ sale.customerIdentification }}</span>
+                <span class="payment-badge" :class="paymentClass(sale.paymentMethod)">{{ paymentLabel(sale.paymentMethod) }}</span>
+              </div>
+              <div class="d-flex align-items-center gap-3">
+                <small class="text-muted">{{ formatDateTime(sale.saleDate) }}</small>
+                <span class="pending-sale-total">${{ sale.total?.toFixed(2) }}</span>
+                <span class="badge badge-neutral">
+                  {{ sale.items.filter(i => i.deliveryStatus === 'PENDIENTE').length }} pendiente(s)
+                </span>
+              </div>
+            </div>
+
+            <!-- Tabla de ítems -->
+            <div class="table-responsive">
+              <table class="tac-table">
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th>Talle</th>
+                    <th class="text-center">Cant.</th>
+                    <th class="text-end">Precio</th>
+                    <th class="text-center">Estado</th>
+                    <th class="text-center" style="width:110px"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="item in sale.items" :key="item.id"
+                    :class="item.deliveryStatus === 'PENDIENTE' ? 'pending-item-row' : 'delivered-item-row'">
+                    <td class="fw-bold">{{ item.product?.name || 'N/A' }}</td>
+                    <td><span v-if="item.size?.name" class="chip">{{ item.size.name }}</span><span v-else class="text-muted">—</span></td>
+                    <td class="text-center">{{ item.quantity }}</td>
+                    <td class="text-end">${{ item.unitPrice?.toFixed(2) }}</td>
+                    <td class="text-center">
+                      <span class="delivery-badge" :class="item.deliveryStatus === 'PENDIENTE' ? 'delivery-pending' : 'delivery-done'">
+                        {{ item.deliveryStatus === 'PENDIENTE' ? '⏳ Pendiente' : '✓ Entregado' }}
+                      </span>
+                    </td>
+                    <td class="text-center">
+                      <button v-if="item.deliveryStatus === 'PENDIENTE'"
+                        class="btn btn-sm btn-success-soft"
+                        @click="handleDeliverItem(item, sale)"
+                        :disabled="isProcessing">
+                        <span v-if="isProcessing" class="spinner spinner-sm"></span>
+                        <span v-else>✓ Entregar</span>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div v-if="sale.observations" class="pending-sale-obs">
+              <small class="text-muted">Obs: {{ sale.observations }}</small>
+            </div>
+          </div>
+        </div>
+      </div> <!-- fin pestaña pendientes -->
 
       <!-- ── MODAL CONFIRMAR ELIMINACIÓN ───────────────── -->
       <div v-if="deleteModal.show" class="tac-modal-overlay" @click.self="closeDeleteModal">
@@ -470,7 +598,7 @@
 
 <script>
 import BaseLayout from '@/components/BaseLayout.vue'
-import { getAllSales, getTodaySales, getSalesByDate, createSale, searchSalesByName, searchSalesByIdentification, updateSale, deleteSale } from '@/services/saleService'
+import { getAllSales, getTodaySales, getSalesByDate, createSale, searchSalesByName, searchSalesByIdentification, updateSale, deleteSale, deliverItem, getPendingSales } from '@/services/saleService'
 import { getAllProducts } from '@/services/productService'
 import { getAllSizes }    from '@/services/sizeService'
 import { getAllStock }    from '@/services/stockService'
@@ -480,9 +608,11 @@ export default {
   components: { BaseLayout },
   data() {
     return {
+      activeTab: 'sales',
       sales: [], products: [], sizes: [], stock: [],
+      pendingSales: [], isPendingLoading: false,
       saleForm: { customerName: '', customerIdentification: '', observations: '', discount: 0, paymentMethod: 'EFECTIVO', items: [] },
-      itemForm: { productId: '', sizeId: '', quantity: 1, unitPrice: 0 },
+      itemForm: { productId: '', sizeId: '', quantity: 1, unitPrice: 0, deliverNow: true },
       productSearch: '', showProductDropdown: false,
       salesFilters: { timeFilter: 'today', specificDate: '', searchType: '', searchValue: '' },
       editModal: { show: false, sale: null, originalSale: null, newItem: { productId: '', sizeId: '', quantity: 1, unitPrice: 0 } },
@@ -507,8 +637,9 @@ export default {
     subtotal() { return this.saleForm.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0) },
     total() { const r = this.subtotal - (this.saleForm.discount || 0); return r >= 0 ? r : 0 },
     canAddItem() {
-      return this.itemForm.productId && this.itemForm.quantity > 0 && this.itemForm.unitPrice >= 0 &&
-        (this.currentStockAvailable === null || this.itemForm.quantity <= this.currentStockAvailable)
+      if (!this.itemForm.productId || this.itemForm.quantity <= 0 || this.itemForm.unitPrice < 0) return false
+      if (this.itemForm.deliverNow && this.currentStockAvailable !== null && this.itemForm.quantity > this.currentStockAvailable) return false
+      return true
     },
     canSubmitSale() {
       return this.saleForm.customerName.trim() !== '' && this.saleForm.items.length > 0 && this.total >= 0
@@ -614,9 +745,9 @@ export default {
     handleAddItem() {
       const available = this.currentStockAvailable
       if (!this.itemForm.productId) { this.showToast('error', 'Seleccione un producto'); return }
-      if (available !== null && this.itemForm.quantity > available) { this.showToast('error', `Stock insuficiente (${available})`); return }
-      this.saleForm.items.push({ productId: this.itemForm.productId, sizeId: this.itemForm.sizeId || null, quantity: this.itemForm.quantity, unitPrice: Number(this.itemForm.unitPrice) })
-      this.itemForm = { productId: '', sizeId: '', quantity: 1, unitPrice: 0 }
+      if (this.itemForm.deliverNow && available !== null && this.itemForm.quantity > available) { this.showToast('error', `Stock insuficiente (${available})`); return }
+      this.saleForm.items.push({ productId: this.itemForm.productId, sizeId: this.itemForm.sizeId || null, quantity: this.itemForm.quantity, unitPrice: Number(this.itemForm.unitPrice), deliverNow: this.itemForm.deliverNow })
+      this.itemForm = { productId: '', sizeId: '', quantity: 1, unitPrice: 0, deliverNow: true }
       this.productSearch = ''
       this.showToast('success', 'Ítem agregado')
     },
@@ -635,7 +766,7 @@ export default {
     },
     resetSaleForm() {
       this.saleForm = { customerName: '', customerIdentification: '', observations: '', discount: 0, paymentMethod: 'EFECTIVO', items: [] }
-      this.itemForm = { productId: '', sizeId: '', quantity: 1, unitPrice: 0 }
+      this.itemForm = { productId: '', sizeId: '', quantity: 1, unitPrice: 0, deliverNow: true }
       this.productSearch = ''
       this.errors = {}
     },
@@ -737,6 +868,41 @@ export default {
       const c = { EFECTIVO: 'pay-cash', TARJETA: 'pay-card', TRANSFERENCIA: 'pay-transfer' }
       return c[method] || ''
     },
+    async switchToPending() {
+      this.activeTab = 'pending'
+      await this.fetchPendingSales()
+    },
+    async fetchPendingSales() {
+      this.isPendingLoading = true
+      try {
+        const res = await getPendingSales()
+        this.pendingSales = res.data || []
+      } catch {
+        this.showToast('error', 'Error al cargar pendientes')
+      } finally {
+        this.isPendingLoading = false
+      }
+    },
+    hasPendingItems(sale) {
+      return sale.items?.some(i => i.deliveryStatus === 'PENDIENTE')
+    },
+    async handleDeliverItem(item, sale) {
+      this.isProcessing = true
+      try {
+        await deliverItem(item.id)
+        item.deliveryStatus = 'ENTREGADO'
+        this.showToast('success', `"${item.product?.name}" entregado`)
+        await this.fetchStock()
+        // Si la venta ya no tiene pendientes, quitarla de la lista
+        if (!sale.items.some(i => i.deliveryStatus === 'PENDIENTE')) {
+          this.pendingSales = this.pendingSales.filter(s => s.id !== sale.id)
+        }
+      } catch (e) {
+        this.showToast('error', e.response?.data?.message || 'Error al registrar entrega')
+      } finally {
+        this.isProcessing = false
+      }
+    },
     showToast(type, message) { this.toast = { show: true, type, message }; setTimeout(() => { this.toast.show = false }, 3200) }
   }
 }
@@ -823,4 +989,84 @@ details[open] .summary-trigger::before { transform: rotate(90deg); }
 .tac-toast-error   { background: var(--red);     color: #fff; }
 .toast-enter-active, .toast-leave-active { transition: all .25s ease; }
 .toast-enter-from, .toast-leave-to { opacity: 0; transform: translateY(10px); }
+
+.btn-success-soft {
+  background: rgba(34, 197, 94, 0.12);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+}
+.btn-success-soft:hover { background: rgba(34, 197, 94, 0.22); color: #22c55e; }
+
+.btn-warning-soft {
+  background: rgba(201, 125, 44, 0.12);
+  color: var(--amber-light);
+  border: 1px solid rgba(201, 125, 44, 0.3);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+}
+.btn-warning-soft:hover { background: rgba(201, 125, 44, 0.22); color: var(--amber-light); }
+
+.delivery-badge {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.45rem;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.delivery-done    { background: rgba(34,197,94,0.1);   color: #22c55e;          border: 1px solid rgba(34,197,94,0.25); }
+.delivery-pending { background: rgba(201,125,44,0.1);  color: var(--amber-light); border: 1px solid rgba(201,125,44,0.25); }
+
+.pending-dot { margin-left: 0.3rem; font-size: 0.8rem; }
+
+/* Tab count amber */
+.tab-count-amber {
+  background: rgba(201, 125, 44, 0.2);
+  color: var(--amber-light);
+  border: 1px solid rgba(201, 125, 44, 0.35);
+}
+
+/* Pending sale cards */
+.pending-sale-card {
+  background: var(--bg-card);
+  border: 1px solid rgba(201, 125, 44, 0.3);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.pending-sale-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.85rem 1.25rem;
+  background: rgba(201, 125, 44, 0.06);
+  border-bottom: 1px solid rgba(201, 125, 44, 0.2);
+}
+.pending-sale-customer {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+}
+.pending-sale-total {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+.pending-item-row { background: rgba(201, 125, 44, 0.04); }
+.delivered-item-row { opacity: 0.5; }
+.pending-sale-obs {
+  padding: 0.5rem 1.25rem;
+  border-top: 1px solid var(--border);
+}
 </style>

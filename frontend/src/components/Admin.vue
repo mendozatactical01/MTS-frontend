@@ -92,8 +92,19 @@
           <div class="tac-card">
             <div class="tac-card-header">
               <h5>Productos</h5>
-              <input v-model="filters.productSearch" class="form-control form-control-sm"
-                style="width:220px" placeholder="🔍 Buscar..." />
+              <div class="d-flex gap-2 align-items-center">
+                <div class="search-wrapper">
+                  <span class="search-icon">⌕</span>
+                  <input v-model="filters.productSearch" class="form-control form-control-sm search-input"
+                    placeholder="Buscar producto..." />
+                  <button v-if="filters.productSearch" class="search-clear" @click="filters.productSearch = ''">✕</button>
+                </div>
+                <select v-model.number="productPageSize" class="form-select form-select-sm" style="width:auto">
+                  <option :value="10">10</option>
+                  <option :value="20">20</option>
+                  <option :value="50">50</option>
+                </select>
+              </div>
             </div>
             <div class="tac-card-body">
               <!-- Add form -->
@@ -170,7 +181,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="prod in filteredProducts" :key="prod.id">
+                    <tr v-for="prod in paginatedProducts" :key="prod.id">
                       <!-- View -->
                       <template v-if="editingId !== prod.id">
                         <td class="fw-bold">{{ prod.name }}</td>
@@ -219,6 +230,29 @@
                     </tr>
                   </tbody>
                 </table>
+
+                <!-- Paginación -->
+                <div v-if="totalProductPages > 1" class="pagination-bar">
+                  <span class="pagination-info">
+                    {{ (productPage - 1) * productPageSize + 1 }}–{{ Math.min(productPage * productPageSize, filteredProducts.length) }}
+                    de {{ filteredProducts.length }} productos
+                  </span>
+                  <div class="pagination-controls">
+                    <button class="btn btn-sm btn-secondary" @click="productPage = 1" :disabled="productPage <= 1" title="Primera">«</button>
+                    <button class="btn btn-sm btn-secondary" @click="productPage--" :disabled="productPage <= 1" title="Anterior">‹</button>
+                    <span class="pagination-pages">
+                      <button
+                        v-for="p in pageNumbers"
+                        :key="p"
+                        class="btn btn-sm"
+                        :class="p === productPage ? 'btn-primary' : 'btn-secondary'"
+                        @click="productPage = p"
+                      >{{ p }}</button>
+                    </span>
+                    <button class="btn btn-sm btn-secondary" @click="productPage++" :disabled="productPage >= totalProductPages" title="Siguiente">›</button>
+                    <button class="btn btn-sm btn-secondary" @click="productPage = totalProductPages" :disabled="productPage >= totalProductPages" title="Última">»</button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -361,6 +395,8 @@ export default {
       },
       editingId: null, editingType: null, editingName: '', editingData: {},
       filters: { productSearch: '', sizeSearch: '' },
+      productPage: 1,
+      productPageSize: 10,
       isLoading: false, isProcessing: false,
       errors: {},
       toast: { show: false, type: 'success', message: '' }
@@ -369,7 +405,27 @@ export default {
   computed: {
     filteredProducts() {
       const s = this.filters.productSearch.toLowerCase()
-      return this.products.filter(p => p.name.toLowerCase().includes(s))
+      return this.products.filter(p =>
+        p.name.toLowerCase().includes(s) ||
+        (p.category?.name || '').toLowerCase().includes(s)
+      )
+    },
+    paginatedProducts() {
+      const start = (this.productPage - 1) * this.productPageSize
+      return this.filteredProducts.slice(start, start + this.productPageSize)
+    },
+    totalProductPages() {
+      return Math.max(1, Math.ceil(this.filteredProducts.length / this.productPageSize))
+    },
+    pageNumbers() {
+      const total = this.totalProductPages
+      const current = this.productPage
+      const delta = 2
+      const pages = []
+      for (let i = Math.max(1, current - delta); i <= Math.min(total, current + delta); i++) {
+        pages.push(i)
+      }
+      return pages
     },
     filteredSizes() {
       const s = this.filters.sizeSearch.toLowerCase()
@@ -378,6 +434,10 @@ export default {
     canAddProduct() {
       return this.forms.product.name && this.forms.product.price >= 0 && this.forms.product.priceCash >= 0 && this.forms.product.categoryId
     }
+  },
+  watch: {
+    'filters.productSearch'() { this.productPage = 1 },
+    'productPageSize'() { this.productPage = 1 }
   },
   mounted() { this.initializeData() },
   methods: {
@@ -505,6 +565,63 @@ export default {
 </script>
 
 <style scoped>
+/* Search input */
+.search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.search-icon {
+  position: absolute;
+  left: 0.55rem;
+  color: var(--text-muted);
+  font-size: 1rem;
+  pointer-events: none;
+  line-height: 1;
+}
+.search-input {
+  padding-left: 1.75rem !important;
+  padding-right: 1.75rem !important;
+  width: 220px;
+}
+.search-clear {
+  position: absolute;
+  right: 0.4rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.7rem;
+  padding: 0;
+  line-height: 1;
+}
+.search-clear:hover { color: var(--text-primary); }
+
+/* Pagination */
+.pagination-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg-surface);
+}
+.pagination-info {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.pagination-pages {
+  display: flex;
+  gap: 0.25rem;
+}
+
 .sizes-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
