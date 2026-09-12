@@ -7,29 +7,35 @@
 
       <form @submit.prevent="handleLogin" class="login-form">
         <div class="form-group">
-          <label>Usuario</label>
+          <label for="login-username">Usuario</label>
           <input
+            id="login-username"
             v-model.trim="username"
             class="form-control"
             :class="{ 'is-invalid': error }"
             placeholder="Ingresá tu usuario"
             autocomplete="username"
+            :aria-invalid="!!error"
+            :aria-describedby="error ? 'login-error' : null"
             :disabled="loading"
           />
         </div>
 
         <div class="form-group">
-          <label>Contraseña</label>
+          <label for="login-password">Contraseña</label>
           <input
+            id="login-password"
             v-model="password"
             type="password"
             class="form-control"
             :class="{ 'is-invalid': error }"
             placeholder="Ingresá tu contraseña"
             autocomplete="current-password"
+            :aria-invalid="!!error"
+            :aria-describedby="error ? 'login-error' : null"
             :disabled="loading"
           />
-          <span v-if="error" class="invalid-feedback d-block">{{ error }}</span>
+          <span v-if="error" id="login-error" class="invalid-feedback d-block" role="alert">{{ error }}</span>
         </div>
 
         <button type="submit" class="btn btn-primary w-100 mt-2" :disabled="loading || !username || !password">
@@ -37,6 +43,8 @@
           <span v-else>Ingresar</span>
         </button>
       </form>
+
+      <router-link to="/" class="back-to-store">← Volver a la tienda</router-link>
     </div>
   </div>
 </template>
@@ -96,6 +104,7 @@ export default {
 
 .login-logo {
   width: 180px;
+  max-width: 100%;
   height: auto;
   object-fit: contain;
 }
@@ -113,5 +122,19 @@ export default {
   text-transform: uppercase;
   color: var(--text-secondary);
   margin-bottom: 0.4rem;
+}
+
+.back-to-store {
+  display: block;
+  text-align: center;
+  margin-top: 1.5rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+.back-to-store:hover { color: var(--crimson-light); }
+
+@media (max-width: 380px) {
+  .login-card { padding: 2rem 1.25rem; }
 }
 </style>

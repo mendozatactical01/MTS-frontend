@@ -11,7 +11,7 @@
       </div>
 
       <div v-else class="detail-grid">
-        <div class="detail-img" :style="{ backgroundImage: `url(${product.imageUrl})` }"></div>
+        <div class="detail-img" role="img" :aria-label="product.name" :style="{ backgroundImage: `url(${product.imageUrl})` }"></div>
 
         <div class="detail-info">
           <span class="badge badge-neutral">{{ product.category?.name }}</span>
@@ -25,29 +25,32 @@
           </p>
           <p class="detail-description">{{ product.description }}</p>
 
-          <div v-if="product.sizes" class="form-group">
-            <label>Talle</label>
+          <div v-if="product.sizes" class="form-group" role="group" aria-labelledby="size-group-label">
+            <label id="size-group-label">Talle</label>
             <div class="size-options">
               <button
                 v-for="size in product.sizes" :key="size.id"
+                type="button"
                 class="size-btn" :class="{ active: selectedSizeId === size.id, disabled: !size.available }"
                 :disabled="!size.available"
+                :aria-pressed="selectedSizeId === size.id"
+                :title="size.available ? null : `Talle ${size.name}, sin stock`"
                 @click="selectedSizeId = size.id"
               >{{ size.name }}</button>
             </div>
-            <span v-if="sizeError" class="invalid-feedback">{{ sizeError }}</span>
+            <span v-if="sizeError" class="invalid-feedback" role="alert">{{ sizeError }}</span>
           </div>
 
           <div class="form-group">
-            <label>Cantidad</label>
+            <label id="qty-label">Cantidad</label>
             <div class="qty-control">
-              <button class="btn btn-secondary btn-sm" @click="quantity = Math.max(1, quantity - 1)">−</button>
-              <span class="qty-value">{{ quantity }}</span>
-              <button class="btn btn-secondary btn-sm" @click="quantity++">+</button>
+              <button type="button" class="btn btn-secondary btn-sm" aria-label="Disminuir cantidad" @click="quantity = Math.max(1, quantity - 1)">−</button>
+              <span class="qty-value" role="status" aria-labelledby="qty-label" aria-live="polite">{{ quantity }}</span>
+              <button type="button" class="btn btn-secondary btn-sm" aria-label="Aumentar cantidad" @click="quantity++">+</button>
             </div>
           </div>
 
-          <button class="btn btn-primary btn-lg w-100" :disabled="!product.available" @click="handleAddToCart">
+          <button type="button" class="btn btn-primary btn-lg w-100" :disabled="!product.available" @click="handleAddToCart">
             {{ product.available ? '🛒 Agregar al carrito' : 'Sin stock' }}
           </button>
           <p v-if="added" class="added-confirm">✓ Agregado al carrito — <router-link to="/carrito">ver carrito</router-link></p>

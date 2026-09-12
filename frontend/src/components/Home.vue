@@ -42,7 +42,7 @@
       <div v-if="pendingSales.length > 0" class="pending-card mb-4">
         <div class="pending-card-header">
           <div class="d-flex align-items-center gap-2">
-            <span class="pending-icon">⏳</span>
+            <span class="pending-icon" aria-hidden="true">⏳</span>
             <span class="pending-title">Entregas Pendientes</span>
           </div>
           <div class="d-flex align-items-center gap-2">
@@ -67,30 +67,30 @@
       <!-- Nav cards -->
       <div class="nav-cards">
         <router-link to="/admin/panel" class="nav-card">
-          <div class="nav-card-icon">◈</div>
+          <div class="nav-card-icon" aria-hidden="true">◈</div>
           <div class="nav-card-body">
             <h3>Administración</h3>
             <p>Categorías, productos y talles</p>
           </div>
-          <div class="nav-card-arrow">→</div>
+          <div class="nav-card-arrow" aria-hidden="true">→</div>
         </router-link>
 
         <router-link to="/admin/stock" class="nav-card">
-          <div class="nav-card-icon">▦</div>
+          <div class="nav-card-icon" aria-hidden="true">▦</div>
           <div class="nav-card-body">
             <h3>Stock</h3>
             <p>Control de inventario</p>
           </div>
-          <div class="nav-card-arrow">→</div>
+          <div class="nav-card-arrow" aria-hidden="true">→</div>
         </router-link>
 
         <router-link to="/admin/sales" class="nav-card nav-card-highlight">
-          <div class="nav-card-icon">◉</div>
+          <div class="nav-card-icon" aria-hidden="true">◉</div>
           <div class="nav-card-body">
             <h3>Ventas</h3>
             <p>Registrar y consultar ventas</p>
           </div>
-          <div class="nav-card-arrow">→</div>
+          <div class="nav-card-arrow" aria-hidden="true">→</div>
         </router-link>
       </div>
     </div>
@@ -321,6 +321,14 @@ export default {
   .stats-grid, .nav-cards { grid-template-columns: 1fr; }
   .home-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
   .home-title { font-size: 2rem; }
+}
+
+@media (max-width: 480px) {
+  .pending-card-header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+  .pending-row { flex-direction: column; align-items: flex-start; gap: 0.35rem; }
+  .pending-row-right { width: 100%; justify-content: space-between; }
+  .date-display { padding: 0.75rem 1rem; }
+  .date-day { font-size: 2.5rem; }
 }
 
 /* Pending deliveries card */

@@ -10,8 +10,8 @@
       </div>
 
       <div v-else>
-        <div class="status-banner" :class="statusClass">
-          <span class="status-icon">{{ statusIcon }}</span>
+        <div class="status-banner" :class="statusClass" role="status">
+          <span class="status-icon" aria-hidden="true">{{ statusIcon }}</span>
           <div>
             <h1>{{ statusLabel }}</h1>
             <p>Pedido #{{ order.id }} · {{ formatDate(order.createdAt) }}</p>
@@ -100,7 +100,12 @@ export default {
 .status-paid { background: rgba(139,26,26,0.1); border-color: var(--crimson); }
 .status-rejected { background: rgba(181,50,50,0.1); border-color: var(--red); }
 
-.order-item-row { display: flex; justify-content: space-between; padding: 0.4rem 0; border-top: 1px solid var(--border); font-size: 0.92rem; }
+.order-item-row { display: flex; justify-content: space-between; padding: 0.4rem 0; border-top: 1px solid var(--border); font-size: 0.92rem; gap: 1rem; }
 .order-item-row:first-child { border-top: none; }
 .order-total { font-family: var(--font-display); font-weight: 700; font-size: 1.1rem; border-top: 2px solid var(--border); }
+
+@media (max-width: 480px) {
+  .status-banner { padding: 1rem; gap: 0.75rem; }
+  .status-icon { font-size: 1.4rem; }
+}
 </style>

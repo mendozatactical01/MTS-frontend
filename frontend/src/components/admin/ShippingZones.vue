@@ -21,13 +21,13 @@
             <table class="tac-table">
               <thead>
                 <tr>
-                  <th>Provincia</th>
-                  <th class="text-center">Costo base</th>
-                  <th class="text-center">Costo x kg extra</th>
-                  <th class="text-center">Envío gratis desde</th>
-                  <th class="text-center">Días estimados</th>
-                  <th class="text-center">Activa</th>
-                  <th class="text-center" style="width:110px">Acciones</th>
+                  <th scope="col">Provincia</th>
+                  <th scope="col" class="text-center">Costo base</th>
+                  <th scope="col" class="text-center">Costo x kg extra</th>
+                  <th scope="col" class="text-center">Envío gratis desde</th>
+                  <th scope="col" class="text-center">Días estimados</th>
+                  <th scope="col" class="text-center">Activa</th>
+                  <th scope="col" class="text-center" style="width:110px">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -41,8 +41,8 @@
                     <span class="badge" :class="zone.active ? 'badge-green' : 'badge-neutral'">{{ zone.active ? 'Sí' : 'No' }}</span>
                   </td>
                   <td class="text-center">
-                    <button class="btn btn-sm btn-secondary btn-icon" @click="openEditModal(zone)">✎</button>
-                    <button class="btn btn-sm btn-danger btn-icon" @click="handleDelete(zone)">✕</button>
+                    <button class="btn btn-sm btn-secondary btn-icon" @click="openEditModal(zone)" :aria-label="`Editar zona ${zone.provinceName}`">✎</button>
+                    <button class="btn btn-sm btn-danger btn-icon" @click="handleDelete(zone)" :aria-label="`Eliminar zona ${zone.provinceName}`">✕</button>
                   </td>
                 </tr>
               </tbody>
@@ -53,42 +53,42 @@
 
       <!-- Modal crear/editar -->
       <div v-if="modal.show" class="tac-modal-overlay" @click.self="closeModal">
-        <div class="tac-modal">
+        <div class="tac-modal" role="dialog" aria-modal="true" aria-labelledby="zone-modal-title">
           <div class="tac-modal-header">
-            <h4>{{ modal.editing ? '✎ Editar zona' : '+ Nueva zona' }}</h4>
-            <button class="btn-close" @click="closeModal" :disabled="isProcessing">✕</button>
+            <h4 id="zone-modal-title">{{ modal.editing ? '✎ Editar zona' : '+ Nueva zona' }}</h4>
+            <button class="btn-close" @click="closeModal" :disabled="isProcessing" aria-label="Cerrar">✕</button>
           </div>
           <form @submit.prevent="handleSave">
             <div class="tac-modal-body">
               <div class="form-group mb-2">
-                <label>Provincia *</label>
-                <input v-model.trim="form.provinceName" class="form-control" required :disabled="isProcessing" />
+                <label for="zone-province">Provincia *</label>
+                <input id="zone-province" v-model.trim="form.provinceName" class="form-control" required :disabled="isProcessing" />
               </div>
               <div class="row g-2 mb-2">
                 <div class="col-6">
                   <div class="form-group">
-                    <label>Costo base *</label>
-                    <input v-model.number="form.baseCost" type="number" min="0" class="form-control" required :disabled="isProcessing" />
+                    <label for="zone-base-cost">Costo base *</label>
+                    <input id="zone-base-cost" v-model.number="form.baseCost" type="number" min="0" class="form-control" required :disabled="isProcessing" />
                   </div>
                 </div>
                 <div class="col-6">
                   <div class="form-group">
-                    <label>Costo por kg extra *</label>
-                    <input v-model.number="form.costPerExtraKg" type="number" min="0" class="form-control" required :disabled="isProcessing" />
+                    <label for="zone-extra-kg-cost">Costo por kg extra *</label>
+                    <input id="zone-extra-kg-cost" v-model.number="form.costPerExtraKg" type="number" min="0" class="form-control" required :disabled="isProcessing" />
                   </div>
                 </div>
               </div>
               <div class="row g-2 mb-2">
                 <div class="col-6">
                   <div class="form-group">
-                    <label>Envío gratis desde ($)</label>
-                    <input v-model.number="form.freeShippingThreshold" type="number" min="0" class="form-control" placeholder="Sin mínimo" :disabled="isProcessing" />
+                    <label for="zone-free-threshold">Envío gratis desde ($)</label>
+                    <input id="zone-free-threshold" v-model.number="form.freeShippingThreshold" type="number" min="0" class="form-control" placeholder="Sin mínimo" :disabled="isProcessing" />
                   </div>
                 </div>
                 <div class="col-6">
                   <div class="form-group">
-                    <label>Días estimados *</label>
-                    <input v-model.trim="form.estimatedDays" class="form-control" placeholder="ej: 3-5" required :disabled="isProcessing" />
+                    <label for="zone-estimated-days">Días estimados *</label>
+                    <input id="zone-estimated-days" v-model.trim="form.estimatedDays" class="form-control" placeholder="ej: 3-5" required :disabled="isProcessing" />
                   </div>
                 </div>
               </div>
@@ -109,7 +109,7 @@
       </div>
 
       <transition name="toast">
-        <div v-if="toast.show" class="tac-toast" :class="`tac-toast-${toast.type}`">{{ toast.message }}</div>
+        <div v-if="toast.show" class="tac-toast" :class="`tac-toast-${toast.type}`" role="status" aria-live="polite">{{ toast.message }}</div>
       </transition>
     </div>
   </BaseLayout>
@@ -140,8 +140,13 @@ export default {
     try { this.zones = (await getAllZones()).data }
     catch { this.showToast('error', 'Error al cargar zonas') }
     finally { this.isLoading = false }
+    document.addEventListener('keydown', this.handleEsc)
+  },
+  unmounted() {
+    document.removeEventListener('keydown', this.handleEsc)
   },
   methods: {
+    handleEsc(e) { if (e.key === 'Escape' && this.modal.show) this.closeModal() },
     formatMoney(v) { return Number(v || 0).toLocaleString('es-AR') },
     openCreateModal() {
       this.form = { provinceName: '', baseCost: '', costPerExtraKg: '', freeShippingThreshold: null, estimatedDays: '', active: true }
@@ -195,4 +200,8 @@ export default {
 .tac-toast-error   { background: var(--red);   color: #fff; }
 .toast-enter-active, .toast-leave-active { transition: all .25s ease; }
 .toast-enter-from, .toast-leave-to { opacity: 0; transform: translateY(10px); }
+
+@media (max-width: 480px) {
+  .tac-toast { left: 1rem; right: 1rem; bottom: 1rem; text-align: center; }
+}
 </style>

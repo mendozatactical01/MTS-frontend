@@ -3,7 +3,13 @@
     <div class="section catalog-page">
       <div class="catalog-page-header">
         <h1>Catálogo</h1>
-        <button class="btn btn-secondary btn-sm catalog-filter-toggle" @click="showFilters = !showFilters">
+        <button
+          type="button"
+          class="btn btn-secondary btn-sm catalog-filter-toggle"
+          @click="showFilters = !showFilters"
+          aria-controls="catalog-filters-panel"
+          :aria-expanded="showFilters"
+        >
           Filtros<span v-if="activeFilterCount" class="badge badge-crimson catalog-filter-count">{{ activeFilterCount }}</span>
         </button>
       </div>
@@ -11,14 +17,14 @@
       <div v-if="loading" class="empty-state"><div class="spinner" style="margin:0 auto"></div></div>
 
       <div v-else class="catalog-layout">
-        <aside class="catalog-sidebar" :class="{ 'is-open': showFilters }">
+        <aside id="catalog-filters-panel" class="catalog-sidebar" :class="{ 'is-open': showFilters }">
           <div class="catalog-sidebar-section">
-            <label>Buscar</label>
-            <input v-model="search" class="form-control form-control-sm" placeholder="Producto o combo..." />
+            <label for="catalog-search">Buscar</label>
+            <input id="catalog-search" v-model="search" class="form-control form-control-sm" placeholder="Producto o combo..." />
           </div>
 
-          <div class="catalog-sidebar-section">
-            <label>Categoría</label>
+          <fieldset class="catalog-sidebar-section filter-fieldset">
+            <legend>Categoría</legend>
             <div class="filter-options">
               <label class="filter-option">
                 <input type="radio" name="cat" value="" v-model="categoryFilter" />
@@ -29,7 +35,7 @@
                 <span>{{ cat.name }}</span>
               </label>
             </div>
-          </div>
+          </fieldset>
 
           <div class="catalog-sidebar-section">
             <label class="form-check">
@@ -190,6 +196,13 @@ export default {
 }
 .catalog-sidebar-section { display: flex; flex-direction: column; gap: 0.5rem; }
 .catalog-sidebar-section > label:first-child { margin-bottom: 0.1rem; }
+
+.filter-fieldset { border: none; padding: 0; margin: 0; min-width: 0; }
+.filter-fieldset > legend {
+  font-family: var(--font-display); font-weight: 600; letter-spacing: 0.05em;
+  font-size: 0.78rem; text-transform: uppercase; color: var(--text-secondary);
+  padding: 0; margin-bottom: 0.6rem;
+}
 
 .filter-options { display: flex; flex-direction: column; gap: 0.55rem; }
 .filter-option {

@@ -11,9 +11,13 @@
           <router-link to="/tienda" class="store-nav-link" active-class="active">Tienda</router-link>
         </nav>
 
-        <router-link to="/carrito" class="store-cart-btn">
-          <span class="store-cart-icon">🛒</span>
-          <span v-if="cartCount > 0" class="store-cart-badge">{{ cartCount }}</span>
+        <router-link
+          to="/carrito"
+          class="store-cart-btn"
+          :aria-label="cartCount > 0 ? `Carrito, ${cartCount} producto${cartCount === 1 ? '' : 's'}` : 'Carrito, vacío'"
+        >
+          <span class="store-cart-icon" aria-hidden="true">🛒</span>
+          <span v-if="cartCount > 0" class="store-cart-badge" aria-hidden="true">{{ cartCount }}</span>
         </router-link>
       </div>
     </header>

@@ -12,7 +12,7 @@
       <div v-else class="cart-layout">
         <div class="cart-items">
           <div v-for="item in items" :key="item.key" class="cart-row">
-            <div class="cart-row-img" :style="{ backgroundImage: `url(${item.imageUrl})` }"></div>
+            <div class="cart-row-img" role="img" :aria-label="item.name" :style="{ backgroundImage: `url(${item.imageUrl})` }"></div>
             <div class="cart-row-info">
               <h3>{{ item.name }}</h3>
               <span v-if="item.sizeName" class="badge badge-neutral">Talle {{ item.sizeName }}</span>
@@ -20,12 +20,12 @@
               <p class="cart-row-price">${{ formatMoney(item.unitPrice) }} c/u</p>
             </div>
             <div class="cart-row-qty">
-              <button class="btn btn-secondary btn-sm" @click="changeQty(item, item.quantity - 1)">−</button>
-              <span class="qty-value">{{ item.quantity }}</span>
-              <button class="btn btn-secondary btn-sm" @click="changeQty(item, item.quantity + 1)">+</button>
+              <button type="button" class="btn btn-secondary btn-sm" :aria-label="`Disminuir cantidad de ${item.name}`" @click="changeQty(item, item.quantity - 1)">−</button>
+              <span class="qty-value" role="status" aria-live="polite">{{ item.quantity }}</span>
+              <button type="button" class="btn btn-secondary btn-sm" :aria-label="`Aumentar cantidad de ${item.name}`" @click="changeQty(item, item.quantity + 1)">+</button>
             </div>
             <div class="cart-row-subtotal">${{ formatMoney(item.unitPrice * item.quantity) }}</div>
-            <button class="cart-row-remove" @click="handleRemove(item.key)" title="Quitar">✕</button>
+            <button type="button" class="cart-row-remove" @click="handleRemove(item.key)" :aria-label="`Quitar ${item.name} del carrito`" title="Quitar">✕</button>
           </div>
         </div>
 
@@ -105,8 +105,16 @@ h1 { font-size: 1.8rem; margin-bottom: 1.5rem; }
 
 @media (max-width: 768px) {
   .cart-layout { grid-template-columns: 1fr; }
-  .cart-row { grid-template-columns: 48px 1fr; grid-template-areas: "img info" "img qty" "img subtotal"; }
+  .cart-row {
+    position: relative;
+    grid-template-columns: 56px 1fr;
+    grid-template-areas: "img info" "img qty" "img subtotal";
+    row-gap: 0.5rem;
+  }
+  .cart-row-img { grid-area: img; }
+  .cart-row-info { grid-area: info; padding-right: 1.5rem; }
+  .cart-row-qty { grid-area: qty; }
+  .cart-row-subtotal { grid-area: subtotal; text-align: left; }
   .cart-row-remove { position: absolute; top: 0.5rem; right: 0.5rem; }
-  .cart-row { position: relative; }
 }
 </style>

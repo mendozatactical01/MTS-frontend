@@ -21,11 +21,11 @@
             <table class="tac-table">
               <thead>
                 <tr>
-                  <th>Nombre</th>
-                  <th>Componentes</th>
-                  <th class="text-center">Precio</th>
-                  <th class="text-center">Publicado</th>
-                  <th class="text-center" style="width:110px">Acciones</th>
+                  <th scope="col">Nombre</th>
+                  <th scope="col">Componentes</th>
+                  <th scope="col" class="text-center">Precio</th>
+                  <th scope="col" class="text-center">Publicado</th>
+                  <th scope="col" class="text-center" style="width:110px">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -41,8 +41,8 @@
                     </span>
                   </td>
                   <td class="text-center">
-                    <button class="btn btn-sm btn-secondary btn-icon" @click="openEditModal(combo)">✎</button>
-                    <button class="btn btn-sm btn-danger btn-icon" @click="handleDelete(combo)">✕</button>
+                    <button class="btn btn-sm btn-secondary btn-icon" @click="openEditModal(combo)" :aria-label="`Editar combo ${combo.name}`">✎</button>
+                    <button class="btn btn-sm btn-danger btn-icon" @click="handleDelete(combo)" :aria-label="`Eliminar combo ${combo.name}`">✕</button>
                   </td>
                 </tr>
               </tbody>
@@ -53,32 +53,32 @@
 
       <!-- Modal crear/editar -->
       <div v-if="modal.show" class="tac-modal-overlay" @click.self="closeModal">
-        <div class="tac-modal">
+        <div class="tac-modal" role="dialog" aria-modal="true" aria-labelledby="combo-modal-title">
           <div class="tac-modal-header">
-            <h4>{{ modal.editing ? '✎ Editar combo' : '+ Nuevo combo' }}</h4>
-            <button class="btn-close" @click="closeModal" :disabled="isProcessing">✕</button>
+            <h4 id="combo-modal-title">{{ modal.editing ? '✎ Editar combo' : '+ Nuevo combo' }}</h4>
+            <button class="btn-close" @click="closeModal" :disabled="isProcessing" aria-label="Cerrar">✕</button>
           </div>
           <form @submit.prevent="handleSave">
             <div class="tac-modal-body">
               <div class="form-group mb-2">
-                <label>Nombre *</label>
-                <input v-model.trim="form.name" class="form-control" required :disabled="isProcessing" />
+                <label for="combo-name">Nombre *</label>
+                <input id="combo-name" v-model.trim="form.name" class="form-control" required :disabled="isProcessing" />
               </div>
               <div class="form-group mb-2">
-                <label>Descripción</label>
-                <textarea v-model.trim="form.description" class="form-control" rows="2" :disabled="isProcessing"></textarea>
+                <label for="combo-description">Descripción</label>
+                <textarea id="combo-description" v-model.trim="form.description" class="form-control" rows="2" :disabled="isProcessing"></textarea>
               </div>
               <div class="row g-2 mb-2">
                 <div class="col-6">
                   <div class="form-group">
-                    <label>Precio *</label>
-                    <input v-model.number="form.price" type="number" min="0" class="form-control" required :disabled="isProcessing" />
+                    <label for="combo-price">Precio *</label>
+                    <input id="combo-price" v-model.number="form.price" type="number" min="0" class="form-control" required :disabled="isProcessing" />
                   </div>
                 </div>
                 <div class="col-6">
                   <div class="form-group">
-                    <label>URL de imagen</label>
-                    <input v-model.trim="form.imageUrl" class="form-control" placeholder="https://..." :disabled="isProcessing" />
+                    <label for="combo-image-url">URL de imagen</label>
+                    <input id="combo-image-url" v-model.trim="form.imageUrl" class="form-control" placeholder="https://..." :disabled="isProcessing" />
                   </div>
                 </div>
               </div>
@@ -87,14 +87,14 @@
                 <label for="combo-published" class="form-check-label">Publicado en la tienda</label>
               </div>
 
-              <label>Componentes *</label>
-              <div v-for="(item, idx) in form.items" :key="idx" class="combo-item-row">
-                <select v-model.number="item.productId" class="form-select form-select-sm" :disabled="isProcessing" @change="item.productName = productName(item.productId)">
+              <label id="combo-items-label">Componentes *</label>
+              <div v-for="(item, idx) in form.items" :key="idx" class="combo-item-row" role="group" aria-labelledby="combo-items-label">
+                <select v-model.number="item.productId" class="form-select form-select-sm" aria-label="Producto del combo" :disabled="isProcessing" @change="item.productName = productName(item.productId)">
                   <option value="" disabled>Producto</option>
                   <option v-for="p in products" :key="p.id" :value="p.id">{{ p.name }}</option>
                 </select>
-                <input v-model.number="item.quantity" type="number" min="1" class="form-control form-control-sm" style="max-width:70px" :disabled="isProcessing" />
-                <button type="button" class="btn btn-sm btn-danger btn-icon" @click="form.items.splice(idx, 1)" :disabled="isProcessing">✕</button>
+                <input v-model.number="item.quantity" type="number" min="1" class="form-control form-control-sm" style="max-width:70px" aria-label="Cantidad" :disabled="isProcessing" />
+                <button type="button" class="btn btn-sm btn-danger btn-icon" @click="form.items.splice(idx, 1)" :disabled="isProcessing" aria-label="Quitar componente">✕</button>
               </div>
               <button type="button" class="btn btn-sm btn-secondary mt-1" @click="form.items.push({ productId: '', productName: '', quantity: 1 })" :disabled="isProcessing">
                 + Agregar componente
@@ -113,7 +113,7 @@
       </div>
 
       <transition name="toast">
-        <div v-if="toast.show" class="tac-toast" :class="`tac-toast-${toast.type}`">{{ toast.message }}</div>
+        <div v-if="toast.show" class="tac-toast" :class="`tac-toast-${toast.type}`" role="status" aria-live="polite">{{ toast.message }}</div>
       </transition>
     </div>
   </BaseLayout>
@@ -154,8 +154,13 @@ export default {
     } finally {
       this.isLoading = false
     }
+    document.addEventListener('keydown', this.handleEsc)
+  },
+  unmounted() {
+    document.removeEventListener('keydown', this.handleEsc)
   },
   methods: {
+    handleEsc(e) { if (e.key === 'Escape' && this.modal.show) this.closeModal() },
     formatMoney(v) { return Number(v || 0).toLocaleString('es-AR') },
     productName(id) { return this.products.find(p => p.id === id)?.name || '' },
     openCreateModal() {
@@ -207,8 +212,12 @@ export default {
 </script>
 
 <style scoped>
-.combo-item-row { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center; }
-.combo-item-row .form-select { flex: 1; }
+.combo-item-row { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center; flex-wrap: wrap; }
+.combo-item-row .form-select { flex: 1; min-width: 140px; }
+
+@media (max-width: 480px) {
+  .tac-toast { left: 1rem; right: 1rem; bottom: 1rem; text-align: center; }
+}
 
 .tac-toast {
   position: fixed; bottom: 1.5rem; right: 1.5rem;

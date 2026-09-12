@@ -11,28 +11,28 @@
       </div>
 
       <div v-else class="checkout-layout">
-        <form class="checkout-form" @submit.prevent="handleSubmit">
+        <form id="checkout-form" class="checkout-form" @submit.prevent="handleSubmit">
           <div class="tac-card mb-3">
             <div class="tac-card-header"><h5>Datos de contacto</h5></div>
             <div class="tac-card-body">
               <div class="form-row">
                 <div class="form-group">
-                  <label>Nombre y apellido</label>
-                  <input v-model.trim="form.customerName" class="form-control" required :disabled="submitting" />
+                  <label for="f-name">Nombre y apellido</label>
+                  <input id="f-name" v-model.trim="form.customerName" class="form-control" autocomplete="name" required :disabled="submitting" />
                 </div>
                 <div class="form-group">
-                  <label>DNI</label>
-                  <input v-model.trim="form.customerDni" class="form-control" required :disabled="submitting" />
+                  <label for="f-dni">DNI</label>
+                  <input id="f-dni" v-model.trim="form.customerDni" class="form-control" inputmode="numeric" autocomplete="off" required :disabled="submitting" />
                 </div>
               </div>
               <div class="form-row">
                 <div class="form-group">
-                  <label>Email</label>
-                  <input v-model.trim="form.customerEmail" type="email" class="form-control" required :disabled="submitting" />
+                  <label for="f-email">Email</label>
+                  <input id="f-email" v-model.trim="form.customerEmail" type="email" class="form-control" autocomplete="email" required :disabled="submitting" />
                 </div>
                 <div class="form-group">
-                  <label>Teléfono</label>
-                  <input v-model.trim="form.customerPhone" class="form-control" required :disabled="submitting" />
+                  <label for="f-phone">Teléfono</label>
+                  <input id="f-phone" v-model.trim="form.customerPhone" type="tel" class="form-control" autocomplete="tel" required :disabled="submitting" />
                 </div>
               </div>
             </div>
@@ -42,35 +42,35 @@
             <div class="tac-card-header"><h5>Envío</h5></div>
             <div class="tac-card-body">
               <div class="form-group mb-2">
-                <label>Provincia</label>
-                <select v-model.number="form.shippingZoneId" class="form-select" required :disabled="submitting" @change="handleQuoteShipping">
+                <label for="f-zone">Provincia</label>
+                <select id="f-zone" v-model.number="form.shippingZoneId" class="form-select" autocomplete="address-level1" required :disabled="submitting" @change="handleQuoteShipping">
                   <option value="" disabled>Seleccioná provincia</option>
                   <option v-for="zone in zones" :key="zone.id" :value="zone.id">{{ zone.provinceName }}</option>
                 </select>
               </div>
               <div class="form-row">
                 <div class="form-group">
-                  <label>Calle</label>
-                  <input v-model.trim="form.shippingStreet" class="form-control" required :disabled="submitting" />
+                  <label for="f-street">Calle</label>
+                  <input id="f-street" v-model.trim="form.shippingStreet" class="form-control" autocomplete="address-line1" required :disabled="submitting" />
                 </div>
-                <div class="form-group" style="max-width:120px">
-                  <label>Número</label>
-                  <input v-model.trim="form.shippingNumber" class="form-control" required :disabled="submitting" />
+                <div class="form-group form-group-number">
+                  <label for="f-number">Número</label>
+                  <input id="f-number" v-model.trim="form.shippingNumber" class="form-control" inputmode="numeric" autocomplete="address-line2" required :disabled="submitting" />
                 </div>
               </div>
               <div class="form-row">
                 <div class="form-group">
-                  <label>Ciudad</label>
-                  <input v-model.trim="form.shippingCity" class="form-control" required :disabled="submitting" />
+                  <label for="f-city">Ciudad</label>
+                  <input id="f-city" v-model.trim="form.shippingCity" class="form-control" autocomplete="address-level2" required :disabled="submitting" />
                 </div>
-                <div class="form-group" style="max-width:160px">
-                  <label>Código Postal</label>
-                  <input v-model.trim="form.shippingPostalCode" class="form-control" required :disabled="submitting" />
+                <div class="form-group form-group-postal">
+                  <label for="f-postal">Código Postal</label>
+                  <input id="f-postal" v-model.trim="form.shippingPostalCode" class="form-control" inputmode="numeric" autocomplete="postal-code" required :disabled="submitting" />
                 </div>
               </div>
               <div class="form-group">
-                <label>Notas (opcional)</label>
-                <textarea v-model.trim="form.notes" class="form-control" rows="2" :disabled="submitting"></textarea>
+                <label for="f-notes">Notas (opcional)</label>
+                <textarea id="f-notes" v-model.trim="form.notes" class="form-control" rows="2" :disabled="submitting"></textarea>
               </div>
             </div>
           </div>
@@ -89,9 +89,9 @@
               <span>Subtotal</span>
               <span>${{ formatMoney(subtotal) }}</span>
             </div>
-            <div class="checkout-summary-row">
+            <div class="checkout-summary-row" aria-live="polite">
               <span>Envío</span>
-              <span v-if="quotingShipping"><span class="spinner spinner-sm"></span></span>
+              <span v-if="quotingShipping"><span class="spinner spinner-sm" aria-hidden="true"></span> Cotizando…</span>
               <span v-else-if="shippingQuote">{{ shippingQuote.free ? 'Gratis' : `$${formatMoney(shippingQuote.cost)}` }}</span>
               <span v-else class="text-muted">Seleccioná provincia</span>
             </div>
@@ -99,9 +99,10 @@
               <span>Total</span>
               <span>${{ formatMoney(total) }}</span>
             </div>
-            <span v-if="error" class="invalid-feedback d-block mb-2">{{ error }}</span>
-            <button type="submit" class="btn btn-primary btn-lg w-100" :disabled="submitting || !form.shippingZoneId" @click="handleSubmit">
-              <span v-if="submitting" class="spinner spinner-sm"></span>
+            <span v-if="error" class="invalid-feedback d-block mb-2" role="alert">{{ error }}</span>
+            <button type="submit" form="checkout-form" class="btn btn-primary btn-lg w-100" :disabled="submitting || !form.shippingZoneId">
+              <span v-if="submitting" class="spinner spinner-sm" aria-hidden="true"></span>
+              <span v-if="submitting">Procesando…</span>
               <span v-else>Pagar con Mercado Pago</span>
             </button>
           </div>
@@ -198,6 +199,8 @@ h1 { font-size: 1.8rem; margin-bottom: 1.5rem; }
 .form-row { display: flex; gap: 1rem; }
 .form-row .form-group { flex: 1; }
 .form-group { margin-bottom: 0.9rem; }
+.form-group-number { max-width: 120px; flex: 0 0 auto; }
+.form-group-postal { max-width: 160px; flex: 0 0 auto; }
 .form-group label {
   display: block; font-family: var(--font-display); font-size: 0.75rem; font-weight: 700;
   letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 0.35rem;
@@ -210,5 +213,6 @@ h1 { font-size: 1.8rem; margin-bottom: 1.5rem; }
 @media (max-width: 768px) {
   .checkout-layout { grid-template-columns: 1fr; }
   .form-row { flex-direction: column; gap: 0; }
+  .form-group-number, .form-group-postal { max-width: none; }
 }
 </style>

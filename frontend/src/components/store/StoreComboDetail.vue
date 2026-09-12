@@ -11,7 +11,7 @@
       </div>
 
       <div v-else class="detail-grid">
-        <div class="detail-img" :style="{ backgroundImage: `url(${combo.imageUrl})` }">
+        <div class="detail-img" role="img" :aria-label="`Combo: ${combo.name}`" :style="{ backgroundImage: `url(${combo.imageUrl})` }">
           <span class="badge badge-amber detail-tag">Combo</span>
         </div>
 
@@ -30,15 +30,15 @@
           </div>
 
           <div class="form-group">
-            <label>Cantidad</label>
+            <label id="qty-label">Cantidad</label>
             <div class="qty-control">
-              <button class="btn btn-secondary btn-sm" @click="quantity = Math.max(1, quantity - 1)">−</button>
-              <span class="qty-value">{{ quantity }}</span>
-              <button class="btn btn-secondary btn-sm" @click="quantity++">+</button>
+              <button type="button" class="btn btn-secondary btn-sm" aria-label="Disminuir cantidad" @click="quantity = Math.max(1, quantity - 1)">−</button>
+              <span class="qty-value" role="status" aria-labelledby="qty-label" aria-live="polite">{{ quantity }}</span>
+              <button type="button" class="btn btn-secondary btn-sm" aria-label="Aumentar cantidad" @click="quantity++">+</button>
             </div>
           </div>
 
-          <button class="btn btn-primary btn-lg w-100" @click="handleAddToCart">🛒 Agregar al carrito</button>
+          <button type="button" class="btn btn-primary btn-lg w-100" @click="handleAddToCart">🛒 Agregar al carrito</button>
           <p v-if="added" class="added-confirm">✓ Agregado al carrito — <router-link to="/carrito">ver carrito</router-link></p>
         </div>
       </div>

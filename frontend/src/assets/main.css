@@ -30,7 +30,7 @@
 
   --text-primary:   #e8ebe9;
   --text-secondary: #8a9490;
-  --text-muted:     #5a6460;
+  --text-muted:     #7d8884; /* subido de #5a6460: ese valor daba ~2.8:1 sobre --bg-card, por debajo de las 4.5:1 de WCAG AA para texto normal */
   --text-inverse:   #0d0f0e;
 
   --shadow-sm:      0 1px 3px rgba(0,0,0,0.4);
@@ -69,6 +69,17 @@ body {
 ::-webkit-scrollbar-track { background: var(--bg-base); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--crimson); }
+
+/* Foco de teclado visible y consistente en toda la app (WCAG 2.4.7) */
+:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+.form-control:focus-visible, .form-select:focus-visible { outline: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+}
 
 /* ── Typography ────────────────────────────────────────────── */
 h1, h2, h3, h4, h5, h6 {
@@ -724,4 +735,20 @@ label { font-family: var(--font-display); font-weight: 600; letter-spacing: 0.05
 .form-check { display: flex; align-items: center; gap: 0.5rem; }
 .form-check-input { width: 16px; height: 16px; accent-color: var(--crimson); }
 .form-check-label { font-size: 0.88rem; color: var(--text-secondary); cursor: pointer; }
+
+/* ── Responsive: primitivas compartidas (page-header, tabs, grid) ─
+   Usado por todas las vistas del panel admin (Admin, Stock, Sales,
+   Statistics, Combos, ShippingZones, OnlineOrders). */
+@media (max-width: 768px) {
+  [class^="col-md-"], [class*=" col-md-"] { flex: 0 0 100%; max-width: 100%; }
+}
+
+@media (max-width: 600px) {
+  .page-header { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+  .page-title { font-size: 1.3rem; }
+  .tac-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tac-tab { flex: 0 0 auto; }
+  .tac-modal-footer { flex-wrap: wrap; }
+  .tac-modal-header h4 { font-size: 0.9rem; }
+}
 

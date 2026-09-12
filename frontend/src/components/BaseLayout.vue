@@ -5,10 +5,10 @@
         <div class="brand-logo-wrap">
           <img src="../assets/logo.jpeg" alt="Mendoza Tactical Store" class="brand-logo-img" />
         </div>
-        <button class="btn-close-sidebar mobile-only" @click="sidebarOpen = false">✕</button>
+        <button class="btn-close-sidebar mobile-only" aria-label="Cerrar menú" @click="sidebarOpen = false">✕</button>
       </div>
 
-      <nav class="sidebar-nav">
+      <nav class="sidebar-nav" aria-label="Navegación principal">
         <div class="nav-section-label">Sistema</div>
         <router-link to="/admin" class="nav-item" @click="sidebarOpen = false">
           <span class="nav-icon">⌂</span><span>Inicio</span>
@@ -63,13 +63,16 @@
 
     <div class="main-wrap">
       <header class="topbar">
-        <button class="btn btn-icon mobile-only" @click="sidebarOpen = true" style="color:var(--text-secondary)">
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <button class="btn btn-icon mobile-only" aria-label="Abrir menú" :aria-expanded="sidebarOpen" @click="sidebarOpen = true" style="color:var(--text-secondary)">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
             <path d="M2 4h14M2 9h14M2 14h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
           </svg>
         </button>
         <div class="topbar-title">{{ pageTitle }}</div>
         <div class="topbar-right">
+          <router-link to="/" class="btn btn-sm btn-secondary btn-back-store" aria-label="Volver a la tienda">
+            <span class="nav-icon" aria-hidden="true">⇪</span><span>Volver a la tienda</span>
+          </router-link>
           <span class="topbar-time">{{ currentTime }}</span>
           <button class="btn btn-sm btn-danger" style="margin-left:1rem" @click="handleLogout">Salir</button>
         </div>
@@ -108,8 +111,15 @@ export default {
     setInterval(this.updateTime, 60000)
     this.loadPendingCount()
     setInterval(this.loadPendingCount, 60000)
+    document.addEventListener('keydown', this.handleEsc)
+  },
+  unmounted() {
+    document.removeEventListener('keydown', this.handleEsc)
   },
   methods: {
+    handleEsc(e) {
+      if (e.key === 'Escape' && this.sidebarOpen) this.sidebarOpen = false
+    },
     async loadPendingCount() {
       try {
         const res = await getPendingSales()
@@ -205,8 +215,9 @@ export default {
   position: sticky; top: 0; z-index: 100;
 }
 .topbar-title { font-family: var(--font-display); font-weight: 700; font-size: 0.85rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-secondary); }
-.topbar-right { margin-left: auto; }
-.topbar-time { font-family: var(--font-display); font-size: 0.88rem; font-weight: 600; color: var(--text-muted); }
+.topbar-right { margin-left: auto; display: flex; align-items: center; }
+.topbar-time { font-family: var(--font-display); font-size: 0.88rem; font-weight: 600; color: var(--text-muted); margin-left: 1rem; }
+.btn-back-store .nav-icon { font-size: 0.9rem; width: auto; }
 
 .page-content { flex: 1; padding: 1.75rem; max-width: 1400px; width: 100%; }
 
@@ -220,5 +231,9 @@ export default {
   .sidebar-overlay { display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 250; }
   .main-wrap { margin-left: 0; }
   .page-content { padding: 1rem; }
+  .topbar { padding: 0 0.75rem; gap: 0.5rem; }
+  .topbar-time { display: none; }
+  .btn-back-store span:last-child { display: none; }
+  .btn-back-store { padding: 0.35rem 0.5rem; }
 }
 </style>

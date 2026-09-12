@@ -21,12 +21,12 @@
             <table class="tac-table">
               <thead>
                 <tr>
-                  <th>Cliente</th>
-                  <th>Fecha</th>
-                  <th class="text-center">Estado</th>
-                  <th class="text-center">Total</th>
-                  <th class="text-center">Venta asociada</th>
-                  <th class="text-center" style="width:70px">Ver</th>
+                  <th scope="col">Cliente</th>
+                  <th scope="col">Fecha</th>
+                  <th scope="col" class="text-center">Estado</th>
+                  <th scope="col" class="text-center">Total</th>
+                  <th scope="col" class="text-center">Venta asociada</th>
+                  <th scope="col" class="text-center" style="width:70px">Ver</th>
                 </tr>
               </thead>
               <tbody>
@@ -44,7 +44,7 @@
                     <span v-else class="text-muted">—</span>
                   </td>
                   <td class="text-center">
-                    <button class="btn btn-sm btn-secondary btn-icon" @click="openDetailModal(order)">↗</button>
+                    <button class="btn btn-sm btn-secondary btn-icon" @click="openDetailModal(order)" :aria-label="`Ver pedido de ${order.customerName}`">↗</button>
                   </td>
                 </tr>
               </tbody>
@@ -55,10 +55,10 @@
 
       <!-- Modal detalle -->
       <div v-if="detailModal.show" class="tac-modal-overlay" @click.self="closeDetailModal">
-        <div class="tac-modal">
+        <div class="tac-modal" role="dialog" aria-modal="true" aria-labelledby="order-modal-title">
           <div class="tac-modal-header">
-            <h4>Pedido #{{ detailModal.order?.id }}</h4>
-            <button class="btn-close" @click="closeDetailModal">✕</button>
+            <h4 id="order-modal-title">Pedido #{{ detailModal.order?.id }}</h4>
+            <button class="btn-close" @click="closeDetailModal" aria-label="Cerrar">✕</button>
           </div>
           <div class="tac-modal-body">
             <div class="row g-2 mb-3" style="font-size:.88rem">
@@ -68,8 +68,9 @@
               <div class="col-6"><span style="color:var(--text-muted)">Teléfono:</span> {{ detailModal.order?.customerPhone }}</div>
               <div class="col-12"><span style="color:var(--text-muted)">Dirección:</span> {{ detailModal.order?.shippingStreet }} {{ detailModal.order?.shippingNumber }}, {{ detailModal.order?.shippingCity }} (CP {{ detailModal.order?.shippingPostalCode }})</div>
             </div>
+            <div class="table-responsive">
             <table class="tac-table">
-              <thead><tr><th>Ítem</th><th class="text-center">Cant.</th><th class="text-center">Subtotal</th></tr></thead>
+              <thead><tr><th scope="col">Ítem</th><th scope="col" class="text-center">Cant.</th><th scope="col" class="text-center">Subtotal</th></tr></thead>
               <tbody>
                 <tr v-for="(item, idx) in detailModal.order?.items" :key="idx">
                   <td>{{ item.productNameSnapshot }}</td>
@@ -82,6 +83,7 @@
                 <tr><td colspan="2" class="fw-bold">Total</td><td class="text-center fw-bold">${{ formatMoney(detailModal.order?.total) }}</td></tr>
               </tfoot>
             </table>
+            </div>
           </div>
           <div class="tac-modal-footer">
             <button class="btn btn-secondary" @click="closeDetailModal">Cerrar</button>
@@ -121,8 +123,13 @@ export default {
     this.isLoading = true
     try { this.orders = (await getAllOrders()).data }
     finally { this.isLoading = false }
+    document.addEventListener('keydown', this.handleEsc)
+  },
+  unmounted() {
+    document.removeEventListener('keydown', this.handleEsc)
   },
   methods: {
+    handleEsc(e) { if (e.key === 'Escape' && this.detailModal.show) this.closeDetailModal() },
     formatMoney(v) { return Number(v || 0).toLocaleString('es-AR') },
     formatDate(d) { return d ? new Date(d).toLocaleString('es-AR') : '' },
     statusLabel(s) { return STATUS_LABEL[s] || s },

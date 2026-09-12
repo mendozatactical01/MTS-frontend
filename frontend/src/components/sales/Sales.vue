@@ -7,11 +7,11 @@
       </div>
 
       <!-- ── TABS ──────────────────────────────────────── -->
-      <div class="tac-tabs mb-3">
-        <button class="tac-tab" :class="{ active: activeTab === 'sales' }" @click="activeTab = 'sales'">
+      <div class="tac-tabs mb-3" role="tablist">
+        <button class="tac-tab" role="tab" :aria-selected="activeTab === 'sales'" :class="{ active: activeTab === 'sales' }" @click="activeTab = 'sales'">
           ◉ Ventas
         </button>
-        <button class="tac-tab" :class="{ active: activeTab === 'pending' }" @click="switchToPending">
+        <button class="tac-tab" role="tab" :aria-selected="activeTab === 'pending'" :class="{ active: activeTab === 'pending' }" @click="switchToPending">
           ⏳ Pendientes
           <span v-if="pendingSales.length" class="tab-count tab-count-amber">{{ pendingSales.length }}</span>
         </button>
@@ -24,34 +24,35 @@
       <div class="tac-card mb-3">
         <div class="tac-card-header">
           <h5>Nueva Venta</h5>
-          <button type="button" class="btn btn-sm btn-secondary" @click="resetSaleForm" :disabled="isProcessing">✕ Limpiar</button>
+          <button type="button" class="btn btn-sm btn-secondary" @click="resetSaleForm" :disabled="isProcessing"><span aria-hidden="true">✕</span> Limpiar</button>
         </div>
         <div class="tac-card-body">
           <div class="row g-2 mb-3">
             <div class="col-md-3">
               <div class="form-group">
-                <label>Cliente *</label>
-                <input v-model.trim="saleForm.customerName" class="form-control"
-                  :class="{ 'is-invalid': errors.customerName }" placeholder="Nombre del cliente" />
-                <span v-if="errors.customerName" class="invalid-feedback">{{ errors.customerName }}</span>
+                <label for="sale-customer-name">Cliente *</label>
+                <input id="sale-customer-name" v-model.trim="saleForm.customerName" class="form-control"
+                  :class="{ 'is-invalid': errors.customerName }" placeholder="Nombre del cliente"
+                  :aria-describedby="errors.customerName ? 'sale-customer-name-error' : null" />
+                <span v-if="errors.customerName" id="sale-customer-name-error" class="invalid-feedback">{{ errors.customerName }}</span>
               </div>
             </div>
             <div class="col-md-2">
               <div class="form-group">
-                <label>DNI / CUIT</label>
-                <input v-model.trim="saleForm.customerIdentification" class="form-control" placeholder="Identificación" />
+                <label for="sale-customer-id">DNI / CUIT</label>
+                <input id="sale-customer-id" v-model.trim="saleForm.customerIdentification" class="form-control" placeholder="Identificación" />
               </div>
             </div>
             <div class="col-md-4">
               <div class="form-group">
-                <label>Observaciones</label>
-                <input v-model.trim="saleForm.observations" class="form-control" placeholder="Notas..." />
+                <label for="sale-observations">Observaciones</label>
+                <input id="sale-observations" v-model.trim="saleForm.observations" class="form-control" placeholder="Notas..." />
               </div>
             </div>
             <div class="col-md-2">
               <div class="form-group">
-                <label>Medio de Pago *</label>
-                <select v-model="saleForm.paymentMethod" class="form-select">
+                <label for="sale-payment-method">Medio de Pago *</label>
+                <select id="sale-payment-method" v-model="saleForm.paymentMethod" class="form-select">
                   <option value="EFECTIVO">💵 Efectivo</option>
                   <option value="TARJETA">💳 Tarjeta</option>
                   <option value="TRANSFERENCIA">📲 Transferencia</option>
@@ -60,18 +61,18 @@
             </div>
             <div class="col-md-2">
               <div class="form-group">
-                <label>Descuento ($)</label>
+                <label for="sale-discount">Descuento ($)</label>
                 <div class="input-group">
-                  <span class="input-group-text">$</span>
-                  <input v-model.number="saleForm.discount" type="number" min="0" step="0.01" class="form-control" placeholder="0.00" />
+                  <span class="input-group-text" aria-hidden="true">$</span>
+                  <input id="sale-discount" v-model.number="saleForm.discount" type="number" min="0" step="0.01" class="form-control" placeholder="0.00" />
                 </div>
               </div>
             </div>
             <div class="col-md-1 d-flex align-items-end">
               <button type="button" class="btn btn-primary w-100 btn-lg" @click="handleCreateSale"
-                :disabled="!canSubmitSale || isProcessing">
+                :disabled="!canSubmitSale || isProcessing" aria-label="Registrar venta">
                 <span v-if="isProcessing" class="spinner spinner-sm"></span>
-                <span v-else>✓</span>
+                <span v-else aria-hidden="true">✓</span>
               </button>
             </div>
           </div>
@@ -82,20 +83,25 @@
             <div class="row g-2 align-items-end">
               <div class="col-md-3">
                 <div class="form-group">
-                  <label>Producto *</label>
+                  <label id="item-product-label" for="item-product-search">Producto *</label>
                   <div class="autocomplete-wrap">
                     <input
+                      id="item-product-search"
                       v-model="productSearch"
                       class="form-control"
                       placeholder="Buscar producto..."
                       :disabled="isProcessing"
                       autocomplete="off"
+                      role="combobox"
+                      aria-autocomplete="list"
+                      :aria-expanded="showProductDropdown && filteredProducts.length > 0"
+                      aria-controls="item-product-listbox"
                       @focus="showProductDropdown = true"
                       @blur="onProductBlur"
                       @input="showProductDropdown = true; itemForm.productId = ''"
                     />
-                    <div v-if="showProductDropdown && filteredProducts.length" class="autocomplete-dropdown">
-                      <div v-for="p in filteredProducts" :key="p.id" class="autocomplete-item" @mousedown.prevent="selectProduct(p)">
+                    <div v-if="showProductDropdown && filteredProducts.length" id="item-product-listbox" class="autocomplete-dropdown" role="listbox" aria-labelledby="item-product-label">
+                      <div v-for="p in filteredProducts" :key="p.id" class="autocomplete-item" role="option" @mousedown.prevent="selectProduct(p)">
                         {{ p.name }}
                       </div>
                     </div>
@@ -107,8 +113,8 @@
               </div>
               <div class="col-md-2">
                 <div class="form-group">
-                  <label>Talle</label>
-                  <select v-model.number="itemForm.sizeId" class="form-select" :disabled="isProcessing">
+                  <label for="item-size">Talle</label>
+                  <select id="item-size" v-model.number="itemForm.sizeId" class="form-select" :disabled="isProcessing">
                     <option value="">Sin talle</option>
                     <option v-for="s in sizes" :key="s.id" :value="s.id">{{ s.name }}</option>
                   </select>
@@ -116,10 +122,10 @@
               </div>
               <div class="col-md-2">
                 <div class="form-group">
-                  <label>Cantidad *
+                  <label for="item-quantity">Cantidad *
                     <span v-if="itemForm.deliverNow && currentStockAvailable !== null" style="color:var(--text-muted)">(Stock: {{ currentStockAvailable }})</span>
                   </label>
-                  <input v-model.number="itemForm.quantity" type="number" min="1"
+                  <input id="item-quantity" v-model.number="itemForm.quantity" type="number" min="1"
                     :max="itemForm.deliverNow ? (currentStockAvailable || undefined) : undefined"
                     class="form-control" placeholder="1"
                     :disabled="!itemForm.productId || isProcessing" />
@@ -127,33 +133,35 @@
               </div>
               <div class="col-md-2">
                 <div class="form-group">
-                  <label>Precio unit. *</label>
+                  <label for="item-unit-price">Precio unit. *</label>
                   <div class="input-group">
-                    <span class="input-group-text">$</span>
-                    <input v-model.number="itemForm.unitPrice" type="number" min="0" step="0.01" class="form-control" placeholder="0.00" :disabled="isProcessing" />
+                    <span class="input-group-text" aria-hidden="true">$</span>
+                    <input id="item-unit-price" v-model.number="itemForm.unitPrice" type="number" min="0" step="0.01" class="form-control" placeholder="0.00" :disabled="isProcessing" />
                   </div>
                 </div>
               </div>
               <div class="col-md-2">
                 <div class="form-group">
-                  <label>Subtotal</label>
-                  <div class="subtotal-display">${{ itemSubtotal }}</div>
+                  <label id="item-subtotal-label">Subtotal</label>
+                  <div class="subtotal-display" role="status" aria-labelledby="item-subtotal-label">${{ itemSubtotal }}</div>
                 </div>
               </div>
               <div class="col-md-2">
                 <div class="form-group">
-                  <label>Entrega</label>
+                  <label id="item-delivery-label">Entrega</label>
                   <button type="button"
                     class="btn w-100"
                     :class="itemForm.deliverNow ? 'btn-success-soft' : 'btn-warning-soft'"
                     @click="itemForm.deliverNow = !itemForm.deliverNow"
-                    :disabled="isProcessing">
+                    :disabled="isProcessing"
+                    :aria-pressed="itemForm.deliverNow"
+                    aria-labelledby="item-delivery-label">
                     {{ itemForm.deliverNow ? '✓ Ahora' : '⏳ Pendiente' }}
                   </button>
                 </div>
               </div>
               <div class="col-md-1">
-                <button type="button" class="btn btn-primary w-100" @click="handleAddItem" :disabled="!canAddItem || isProcessing">+</button>
+                <button type="button" class="btn btn-primary w-100" @click="handleAddItem" :disabled="!canAddItem || isProcessing" aria-label="Agregar ítem">+</button>
               </div>
             </div>
           </div>
@@ -163,12 +171,12 @@
             <table class="tac-table">
               <thead>
                 <tr>
-                  <th>Producto</th><th>Talle</th>
-                  <th class="text-center">Cant.</th>
-                  <th class="text-end">Precio</th>
-                  <th class="text-end">Subtotal</th>
-                  <th class="text-center">Entrega</th>
-                  <th class="text-center" style="width:60px"></th>
+                  <th scope="col">Producto</th><th scope="col">Talle</th>
+                  <th scope="col" class="text-center">Cant.</th>
+                  <th scope="col" class="text-end">Precio</th>
+                  <th scope="col" class="text-end">Subtotal</th>
+                  <th scope="col" class="text-center">Entrega</th>
+                  <th scope="col" class="text-center" style="width:60px"></th>
                 </tr>
               </thead>
               <tbody>
@@ -183,12 +191,14 @@
                       class="btn btn-sm"
                       :class="item.deliverNow !== false ? 'btn-success-soft' : 'btn-warning-soft'"
                       @click="item.deliverNow = !item.deliverNow"
-                      :disabled="isProcessing">
+                      :disabled="isProcessing"
+                      :aria-pressed="item.deliverNow !== false"
+                      :aria-label="`Entrega de ${getProductName(item.productId)}`">
                       {{ item.deliverNow !== false ? '✓ Ahora' : '⏳ Pendiente' }}
                     </button>
                   </td>
                   <td class="text-center">
-                    <button class="btn btn-sm btn-danger btn-icon" @click="removeItem(idx)" :disabled="isProcessing">✕</button>
+                    <button class="btn btn-sm btn-danger btn-icon" @click="removeItem(idx)" :disabled="isProcessing" :aria-label="`Quitar ${getProductName(item.productId)}`">✕</button>
                   </td>
                 </tr>
               </tbody>
@@ -223,8 +233,8 @@
           <div class="row g-2 mb-3">
             <div class="col-md-3">
               <div class="form-group">
-                <label>Período</label>
-                <select v-model="salesFilters.timeFilter" class="form-select form-select-sm" @change="fetchSales">
+                <label for="sales-filter-period">Período</label>
+                <select id="sales-filter-period" v-model="salesFilters.timeFilter" class="form-select form-select-sm" @change="fetchSales">
                   <option value="today">Hoy</option>
                   <option value="all">Todas</option>
                   <option value="byDate">Fecha específica</option>
@@ -233,14 +243,14 @@
             </div>
             <div v-if="salesFilters.timeFilter === 'byDate'" class="col-md-3">
               <div class="form-group">
-                <label>Fecha</label>
-                <input type="date" v-model="salesFilters.specificDate" class="form-control form-control-sm" @change="fetchSales" />
+                <label for="sales-filter-date">Fecha</label>
+                <input id="sales-filter-date" type="date" v-model="salesFilters.specificDate" class="form-control form-control-sm" @change="fetchSales" />
               </div>
             </div>
             <div class="col-md-3">
               <div class="form-group">
-                <label>Buscar por</label>
-                <select v-model="salesFilters.searchType" class="form-select form-select-sm">
+                <label for="sales-search-type">Buscar por</label>
+                <select id="sales-search-type" v-model="salesFilters.searchType" class="form-select form-select-sm">
                   <option value="">Sin filtro</option>
                   <option value="name">Nombre cliente</option>
                   <option value="identification">Identificación</option>
@@ -250,17 +260,18 @@
             </div>
             <div v-if="salesFilters.searchType" class="col-md-3">
               <div class="form-group">
-                <label>Valor</label>
+                <label for="sales-search-value">Valor</label>
                 <input v-if="salesFilters.searchType !== 'date'"
+                  id="sales-search-value"
                   v-model="salesFilters.searchValue" class="form-control form-control-sm"
                   :placeholder="salesFilters.searchType === 'name' ? 'Nombre...' : 'DNI/CUIT...'"
                   @keyup.enter="handleSearch" />
-                <input v-else type="date" v-model="salesFilters.searchValue" class="form-control form-control-sm" @change="handleSearch" />
+                <input v-else id="sales-search-value" type="date" v-model="salesFilters.searchValue" class="form-control form-control-sm" @change="handleSearch" />
               </div>
             </div>
             <div class="col-md-auto d-flex align-items-end gap-2">
               <button class="btn btn-sm btn-primary" @click="handleSearch" :disabled="!salesFilters.searchType || !salesFilters.searchValue || isLoading">Buscar</button>
-              <button v-if="salesFilters.searchType" class="btn btn-sm btn-secondary" @click="handleResetSearch" :disabled="isLoading">✕</button>
+              <button v-if="salesFilters.searchType" class="btn btn-sm btn-secondary" @click="handleResetSearch" :disabled="isLoading" aria-label="Limpiar búsqueda">✕</button>
             </div>
           </div>
 
@@ -273,10 +284,10 @@
             <table class="tac-table">
               <thead>
                 <tr>
-                  <th>Fecha</th><th>Cliente</th><th>ID</th>
-                  <th>Pago</th>
-                  <th class="text-end">Total</th><th>Observ.</th>
-                  <th>Ítems</th><th class="text-center" style="width:90px">Acciones</th>
+                  <th scope="col">Fecha</th><th scope="col">Cliente</th><th scope="col">ID</th>
+                  <th scope="col">Pago</th>
+                  <th scope="col" class="text-end">Total</th><th scope="col">Observ.</th>
+                  <th scope="col">Ítems</th><th scope="col" class="text-center" style="width:90px">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -294,7 +305,7 @@
                     <details>
                       <summary class="summary-trigger">
                         {{ sale.items?.length || 0 }} ítem(s)
-                        <span v-if="hasPendingItems(sale)" class="pending-dot" title="Tiene entregas pendientes">⏳</span>
+                        <span v-if="hasPendingItems(sale)" class="pending-dot" title="Tiene entregas pendientes" aria-label="Tiene entregas pendientes">⏳</span>
                       </summary>
                       <div class="items-detail">
                         <div v-for="item in sale.items" :key="item.id" class="item-detail-row">
@@ -318,8 +329,8 @@
                   </td>
                   <td class="text-center">
                     <div class="d-flex justify-content-center gap-1">
-                      <button class="btn btn-sm btn-warning btn-icon" @click="startEditSale(sale)" :disabled="isProcessing" title="Editar">✎</button>
-                      <button class="btn btn-sm btn-danger btn-icon"  @click="handleDeleteSale(sale)" :disabled="isProcessing" title="Eliminar venta">🗑</button>
+                      <button class="btn btn-sm btn-warning btn-icon" @click="startEditSale(sale)" :disabled="isProcessing" title="Editar" :aria-label="`Editar venta de ${sale.customerName}`">✎</button>
+                      <button class="btn btn-sm btn-danger btn-icon"  @click="handleDeleteSale(sale)" :disabled="isProcessing" title="Eliminar venta" :aria-label="`Eliminar venta de ${sale.customerName}`">🗑</button>
                     </div>
                   </td>
                 </tr>
@@ -371,12 +382,12 @@
               <table class="tac-table">
                 <thead>
                   <tr>
-                    <th>Producto</th>
-                    <th>Talle</th>
-                    <th class="text-center">Cant.</th>
-                    <th class="text-end">Precio</th>
-                    <th class="text-center">Estado</th>
-                    <th class="text-center" style="width:110px"></th>
+                    <th scope="col">Producto</th>
+                    <th scope="col">Talle</th>
+                    <th scope="col" class="text-center">Cant.</th>
+                    <th scope="col" class="text-end">Precio</th>
+                    <th scope="col" class="text-center">Estado</th>
+                    <th scope="col" class="text-center" style="width:110px"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -414,10 +425,10 @@
 
       <!-- ── MODAL CONFIRMAR ELIMINACIÓN ───────────────── -->
       <div v-if="deleteModal.show" class="tac-modal-overlay" @click.self="closeDeleteModal">
-        <div class="tac-modal" style="max-width:420px">
+        <div class="tac-modal" style="max-width:420px" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
           <div class="tac-modal-header" style="border-left: 3px solid var(--red)">
-            <h4 style="color:var(--red-light)">🗑 Eliminar Venta</h4>
-            <button class="btn-close" @click="closeDeleteModal" :disabled="isProcessing">✕</button>
+            <h4 id="delete-modal-title" style="color:var(--red-light)">🗑 Eliminar Venta</h4>
+            <button class="btn-close" @click="closeDeleteModal" :disabled="isProcessing" aria-label="Cerrar">✕</button>
           </div>
           <div class="tac-modal-body">
             <div class="tac-alert tac-alert-danger mb-3">
@@ -454,36 +465,36 @@
 
       <!-- ── MODAL EDITAR VENTA ─────────────────────────── -->
       <div v-if="editModal.show" class="tac-modal-overlay" @click.self="cancelEdit">
-        <div class="tac-modal tac-modal-lg">
+        <div class="tac-modal tac-modal-lg" role="dialog" aria-modal="true" aria-labelledby="edit-sale-modal-title">
           <div class="tac-modal-header">
-            <h4>✎ Editar Venta #{{ editModal.sale?.id }}</h4>
-            <button class="btn-close" @click="cancelEdit" :disabled="isProcessing">✕</button>
+            <h4 id="edit-sale-modal-title">✎ Editar Venta #{{ editModal.sale?.id }}</h4>
+            <button class="btn-close" @click="cancelEdit" :disabled="isProcessing" aria-label="Cerrar">✕</button>
           </div>
           <form @submit.prevent="handleSaveEdit" style="display:flex; flex-direction:column; flex:1; overflow:hidden; min-height:0;">
             <div class="tac-modal-body">
               <div class="row g-2 mb-3">
                 <div class="col-md-4">
                   <div class="form-group">
-                    <label>Cliente *</label>
-                    <input v-model.trim="editModal.sale.customerName" class="form-control form-control-sm" required :disabled="isProcessing" />
+                    <label for="edit-sale-customer-name">Cliente *</label>
+                    <input id="edit-sale-customer-name" v-model.trim="editModal.sale.customerName" class="form-control form-control-sm" required :disabled="isProcessing" />
                   </div>
                 </div>
                 <div class="col-md-3">
                   <div class="form-group">
-                    <label>Identificación</label>
-                    <input v-model.trim="editModal.sale.customerIdentification" class="form-control form-control-sm" :disabled="isProcessing" />
+                    <label for="edit-sale-customer-id">Identificación</label>
+                    <input id="edit-sale-customer-id" v-model.trim="editModal.sale.customerIdentification" class="form-control form-control-sm" :disabled="isProcessing" />
                   </div>
                 </div>
                 <div class="col-md-3">
                   <div class="form-group">
-                    <label>Observaciones</label>
-                    <input v-model.trim="editModal.sale.observations" class="form-control form-control-sm" :disabled="isProcessing" />
+                    <label for="edit-sale-observations">Observaciones</label>
+                    <input id="edit-sale-observations" v-model.trim="editModal.sale.observations" class="form-control form-control-sm" :disabled="isProcessing" />
                   </div>
                 </div>
                 <div class="col-md-3">
                   <div class="form-group">
-                    <label>Medio de Pago</label>
-                    <select v-model="editModal.sale.paymentMethod" class="form-select form-select-sm" :disabled="isProcessing">
+                    <label for="edit-sale-payment-method">Medio de Pago</label>
+                    <select id="edit-sale-payment-method" v-model="editModal.sale.paymentMethod" class="form-select form-select-sm" :disabled="isProcessing">
                       <option value="EFECTIVO">💵 Efectivo</option>
                       <option value="TARJETA">💳 Tarjeta</option>
                       <option value="TRANSFERENCIA">📲 Transferencia</option>
@@ -492,10 +503,10 @@
                 </div>
                 <div class="col-md-2">
                   <div class="form-group">
-                    <label>Descuento ($)</label>
+                    <label for="edit-sale-discount">Descuento ($)</label>
                     <div class="input-group">
-                      <span class="input-group-text">$</span>
-                      <input v-model.number="editModal.sale.discount" type="number" min="0" step="0.01" class="form-control form-control-sm" :disabled="isProcessing" />
+                      <span class="input-group-text" aria-hidden="true">$</span>
+                      <input id="edit-sale-discount" v-model.number="editModal.sale.discount" type="number" min="0" step="0.01" class="form-control form-control-sm" :disabled="isProcessing" />
                     </div>
                   </div>
                 </div>
@@ -507,31 +518,31 @@
               <div class="table-responsive mb-3">
                 <table class="tac-table">
                   <thead>
-                    <tr><th>Producto</th><th>Talle</th><th>Cant.</th><th>Precio</th><th class="text-end">Subtotal</th><th></th></tr>
+                    <tr><th scope="col">Producto</th><th scope="col">Talle</th><th scope="col">Cant.</th><th scope="col">Precio</th><th scope="col" class="text-end">Subtotal</th><th scope="col"></th></tr>
                   </thead>
                   <tbody>
                     <tr v-for="(item, idx) in editModal.sale.items" :key="idx">
                       <td>
-                        <select v-model.number="item.productId" class="form-select form-select-sm" :disabled="isProcessing">
+                        <select v-model.number="item.productId" class="form-select form-select-sm" aria-label="Producto" :disabled="isProcessing">
                           <option value="" disabled>Seleccionar</option>
                           <option v-for="p in products" :key="p.id" :value="p.id">{{ p.name }}</option>
                         </select>
                       </td>
                       <td>
-                        <select v-model.number="item.sizeId" class="form-select form-select-sm" :disabled="isProcessing">
+                        <select v-model.number="item.sizeId" class="form-select form-select-sm" aria-label="Talle" :disabled="isProcessing">
                           <option value="">Sin talle</option>
                           <option v-for="s in sizes" :key="s.id" :value="s.id">{{ s.name }}</option>
                         </select>
                       </td>
-                      <td><input v-model.number="item.quantity" type="number" min="1" class="form-control form-control-sm" style="width:70px" :disabled="isProcessing" /></td>
+                      <td><input v-model.number="item.quantity" type="number" min="1" class="form-control form-control-sm" style="width:70px" aria-label="Cantidad" :disabled="isProcessing" /></td>
                       <td>
                         <div class="input-group" style="width:120px">
-                          <span class="input-group-text">$</span>
-                          <input v-model.number="item.unitPrice" type="number" min="0" step="0.01" class="form-control form-control-sm" :disabled="isProcessing" />
+                          <span class="input-group-text" aria-hidden="true">$</span>
+                          <input v-model.number="item.unitPrice" type="number" min="0" step="0.01" class="form-control form-control-sm" aria-label="Precio unitario" :disabled="isProcessing" />
                         </div>
                       </td>
                       <td class="text-end">${{ (item.quantity * item.unitPrice).toFixed(2) }}</td>
-                      <td><button type="button" class="btn btn-sm btn-danger btn-icon" @click="removeEditItem(idx)" :disabled="isProcessing">✕</button></td>
+                      <td><button type="button" class="btn btn-sm btn-danger btn-icon" @click="removeEditItem(idx)" :disabled="isProcessing" aria-label="Quitar ítem">✕</button></td>
                     </tr>
                   </tbody>
                 </table>
@@ -542,24 +553,24 @@
                 <div class="section-form-label mb-2">Agregar ítem</div>
                 <div class="row g-2 align-items-end">
                   <div class="col-md-4">
-                    <select v-model.number="editModal.newItem.productId" class="form-select form-select-sm" :disabled="isProcessing">
+                    <select v-model.number="editModal.newItem.productId" class="form-select form-select-sm" aria-label="Producto nuevo" :disabled="isProcessing">
                       <option value="" disabled>Producto</option>
                       <option v-for="p in products" :key="p.id" :value="p.id">{{ p.name }}</option>
                     </select>
                   </div>
                   <div class="col-md-2">
-                    <select v-model.number="editModal.newItem.sizeId" class="form-select form-select-sm" :disabled="isProcessing">
+                    <select v-model.number="editModal.newItem.sizeId" class="form-select form-select-sm" aria-label="Talle nuevo" :disabled="isProcessing">
                       <option value="">Sin talle</option>
                       <option v-for="s in sizes" :key="s.id" :value="s.id">{{ s.name }}</option>
                     </select>
                   </div>
                   <div class="col-md-2">
-                    <input v-model.number="editModal.newItem.quantity" type="number" min="1" class="form-control form-control-sm" placeholder="Cant." :disabled="isProcessing" />
+                    <input v-model.number="editModal.newItem.quantity" type="number" min="1" class="form-control form-control-sm" placeholder="Cant." aria-label="Cantidad nueva" :disabled="isProcessing" />
                   </div>
                   <div class="col-md-2">
                     <div class="input-group">
-                      <span class="input-group-text">$</span>
-                      <input v-model.number="editModal.newItem.unitPrice" type="number" min="0" step="0.01" class="form-control form-control-sm" placeholder="Precio" :disabled="isProcessing" />
+                      <span class="input-group-text" aria-hidden="true">$</span>
+                      <input v-model.number="editModal.newItem.unitPrice" type="number" min="0" step="0.01" class="form-control form-control-sm" placeholder="Precio" aria-label="Precio nuevo" :disabled="isProcessing" />
                     </div>
                   </div>
                   <div class="col-md-2">
@@ -590,7 +601,7 @@
 
       <!-- Toast -->
       <transition name="toast">
-        <div v-if="toast.show" class="tac-toast" :class="`tac-toast-${toast.type}`">{{ toast.message }}</div>
+        <div v-if="toast.show" class="tac-toast" :class="`tac-toast-${toast.type}`" role="status" aria-live="polite">{{ toast.message }}</div>
       </transition>
     </div>
   </BaseLayout>
@@ -704,8 +715,17 @@ export default {
     this.updateDateTime()
     setInterval(this.updateDateTime, 60000)
     this.initializeData()
+    document.addEventListener('keydown', this.handleEsc)
+  },
+  unmounted() {
+    document.removeEventListener('keydown', this.handleEsc)
   },
   methods: {
+    handleEsc(e) {
+      if (e.key !== 'Escape') return
+      if (this.deleteModal.show) this.closeDeleteModal()
+      else if (this.editModal.show) this.cancelEdit()
+    },
     async initializeData() {
       this.isLoading = true
       try { await Promise.all([this.fetchProducts(), this.fetchSizes(), this.fetchStock(), this.fetchSales()]) }
@@ -1068,5 +1088,15 @@ details[open] .summary-trigger::before { transform: rotate(90deg); }
 .pending-sale-obs {
   padding: 0.5rem 1.25rem;
   border-top: 1px solid var(--border);
+}
+
+@media (max-width: 700px) {
+  .totals-box { max-width: 100%; }
+  .item-detail-row { flex-wrap: wrap; }
+}
+
+@media (max-width: 480px) {
+  .tac-toast { left: 1rem; right: 1rem; bottom: 1rem; text-align: center; }
+  .pending-sale-header { align-items: flex-start; }
 }
 </style>

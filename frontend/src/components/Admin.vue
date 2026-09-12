@@ -41,13 +41,14 @@
             </div>
             <div class="tac-card-body">
               <!-- Add form -->
-              <form @submit.prevent="handleAddCategory" class="section-form d-flex gap-2 align-items-end mb-3">
+              <form @submit.prevent="handleAddCategory" class="section-form d-flex gap-2 align-items-end flex-wrap mb-3">
                 <div class="form-group flex-1">
-                  <label>Nueva categoría</label>
-                  <input v-model.trim="forms.category.name" class="form-control"
+                  <label for="new-category-name">Nueva categoría</label>
+                  <input id="new-category-name" v-model.trim="forms.category.name" class="form-control"
                     :class="{ 'is-invalid': errors.categoryName }"
+                    :aria-describedby="errors.categoryName ? 'new-category-error' : null"
                     placeholder="Ej: Remeras, Pantalones, Calzado..." required :disabled="isProcessing" />
-                  <span v-if="errors.categoryName" class="invalid-feedback">{{ errors.categoryName }}</span>
+                  <span v-if="errors.categoryName" id="new-category-error" class="invalid-feedback">{{ errors.categoryName }}</span>
                 </div>
                 <button type="submit" class="btn btn-primary" :disabled="!forms.category.name || isProcessing">
                   <span v-if="isProcessing" class="spinner spinner-sm"></span>
@@ -67,18 +68,19 @@
                     <span v-if="editingId !== cat.id" class="list-item-name">{{ cat.name }}</span>
                     <input v-else v-model.trim="editingName" class="form-control form-control-sm"
                       :class="{ 'is-invalid': errors.editing }"
+                      aria-label="Nombre de la categoría"
                       @keyup.enter="handleSaveEdit('category', cat.id)"
                       @keyup.esc="cancelEdit" />
                     <span v-if="errors.editing && editingId === cat.id" class="invalid-feedback d-block">{{ errors.editing }}</span>
                   </div>
                   <div class="list-item-actions">
                     <template v-if="editingId !== cat.id">
-                      <button class="btn btn-sm btn-warning btn-icon" @click="startEdit('category', cat)" :disabled="isProcessing" title="Editar">✎</button>
-                      <button class="btn btn-sm btn-danger btn-icon"  @click="handleDelete('category', cat.id)" :disabled="isProcessing" title="Eliminar">✕</button>
+                      <button class="btn btn-sm btn-warning btn-icon" @click="startEdit('category', cat)" :disabled="isProcessing" title="Editar" :aria-label="`Editar categoría ${cat.name}`">✎</button>
+                      <button class="btn btn-sm btn-danger btn-icon"  @click="handleDelete('category', cat.id)" :disabled="isProcessing" title="Eliminar" :aria-label="`Eliminar categoría ${cat.name}`">✕</button>
                     </template>
                     <template v-else>
-                      <button class="btn btn-sm btn-primary btn-icon" @click="handleSaveEdit('category', cat.id)" :disabled="isProcessing">✓</button>
-                      <button class="btn btn-sm btn-secondary btn-icon" @click="cancelEdit" :disabled="isProcessing">✕</button>
+                      <button class="btn btn-sm btn-primary btn-icon" @click="handleSaveEdit('category', cat.id)" :disabled="isProcessing" aria-label="Guardar cambios">✓</button>
+                      <button class="btn btn-sm btn-secondary btn-icon" @click="cancelEdit" :disabled="isProcessing" aria-label="Cancelar edición">✕</button>
                     </template>
                   </div>
                 </div>
@@ -92,14 +94,14 @@
           <div class="tac-card">
             <div class="tac-card-header">
               <h5>Productos</h5>
-              <div class="d-flex gap-2 align-items-center">
+              <div class="d-flex gap-2 align-items-center products-toolbar">
                 <div class="search-wrapper">
-                  <span class="search-icon">⌕</span>
+                  <span class="search-icon" aria-hidden="true">⌕</span>
                   <input v-model="filters.productSearch" class="form-control form-control-sm search-input"
-                    placeholder="Buscar producto..." />
-                  <button v-if="filters.productSearch" class="search-clear" @click="filters.productSearch = ''">✕</button>
+                    placeholder="Buscar producto..." aria-label="Buscar producto" />
+                  <button v-if="filters.productSearch" class="search-clear" @click="filters.productSearch = ''" aria-label="Limpiar búsqueda">✕</button>
                 </div>
-                <select v-model.number="productPageSize" class="form-select form-select-sm" style="width:auto">
+                <select v-model.number="productPageSize" class="form-select form-select-sm" style="width:auto" aria-label="Cantidad de productos por página">
                   <option :value="10">10</option>
                   <option :value="20">20</option>
                   <option :value="50">50</option>
@@ -112,8 +114,8 @@
                 <div class="row g-2 align-items-end">
                   <div class="col-md-3">
                     <div class="form-group">
-                      <label>Nombre *</label>
-                      <input v-model.trim="forms.product.name" class="form-control"
+                      <label for="new-product-name">Nombre *</label>
+                      <input id="new-product-name" v-model.trim="forms.product.name" class="form-control"
                         :class="{ 'is-invalid': errors.productName }"
                         placeholder="Nombre del producto" :disabled="isProcessing" />
                       <span v-if="errors.productName" class="invalid-feedback">{{ errors.productName }}</span>
@@ -121,10 +123,10 @@
                   </div>
                   <div class="col-md-2">
                     <div class="form-group">
-                      <label>💳 Tarjeta *</label>
+                      <label for="new-product-price">💳 Tarjeta *</label>
                       <div class="input-group">
-                        <span class="input-group-text">$</span>
-                        <input v-model.number="forms.product.price" class="form-control"
+                        <span class="input-group-text" aria-hidden="true">$</span>
+                        <input id="new-product-price" v-model.number="forms.product.price" class="form-control"
                           :class="{ 'is-invalid': errors.productPrice }"
                           type="number" min="0" step="0.01" placeholder="0.00" :disabled="isProcessing" />
                       </div>
@@ -133,10 +135,10 @@
                   </div>
                   <div class="col-md-2">
                     <div class="form-group">
-                      <label>💵 Efectivo *</label>
+                      <label for="new-product-price-cash">💵 Efectivo *</label>
                       <div class="input-group">
-                        <span class="input-group-text">$</span>
-                        <input v-model.number="forms.product.priceCash" class="form-control"
+                        <span class="input-group-text" aria-hidden="true">$</span>
+                        <input id="new-product-price-cash" v-model.number="forms.product.priceCash" class="form-control"
                           :class="{ 'is-invalid': errors.productPriceCash }"
                           type="number" min="0" step="0.01" placeholder="0.00" :disabled="isProcessing" />
                       </div>
@@ -145,8 +147,8 @@
                   </div>
                   <div class="col-md-3">
                     <div class="form-group">
-                      <label>Categoría *</label>
-                      <select v-model.number="forms.product.categoryId" class="form-select"
+                      <label for="new-product-category">Categoría *</label>
+                      <select id="new-product-category" v-model.number="forms.product.categoryId" class="form-select"
                         :class="{ 'is-invalid': errors.productCategory }" :disabled="isProcessing">
                         <option value="" disabled>Seleccionar</option>
                         <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
@@ -166,22 +168,22 @@
                 <div class="row g-2 mt-1">
                   <div class="col-md-5">
                     <div class="form-group">
-                      <label>Descripción (tienda online)</label>
-                      <textarea v-model.trim="forms.product.description" class="form-control form-control-sm" rows="1" :disabled="isProcessing"></textarea>
+                      <label for="new-product-description">Descripción (tienda online)</label>
+                      <textarea id="new-product-description" v-model.trim="forms.product.description" class="form-control form-control-sm" rows="1" :disabled="isProcessing"></textarea>
                     </div>
                   </div>
                   <div class="col-md-3">
                     <div class="form-group">
-                      <label>Imagen</label>
-                      <input type="file" accept="image/*" class="form-control form-control-sm" :disabled="isProcessing || isUploadingImage"
+                      <label for="new-product-image">Imagen</label>
+                      <input id="new-product-image" type="file" accept="image/*" class="form-control form-control-sm" :disabled="isProcessing || isUploadingImage"
                         @change="handleImageUpload($event, forms.product)" />
                       <span v-if="forms.product.imageUrl" style="font-size:.72rem;color:var(--crimson-light)">✓ Imagen cargada</span>
                     </div>
                   </div>
                   <div class="col-md-2">
                     <div class="form-group">
-                      <label>Peso (kg)</label>
-                      <input v-model.number="forms.product.weightKg" type="number" min="0" step="0.1" class="form-control form-control-sm" :disabled="isProcessing" />
+                      <label for="new-product-weight">Peso (kg)</label>
+                      <input id="new-product-weight" v-model.number="forms.product.weightKg" type="number" min="0" step="0.1" class="form-control form-control-sm" :disabled="isProcessing" />
                     </div>
                   </div>
                   <div class="col-md-2">
@@ -203,11 +205,11 @@
                 <table class="tac-table">
                   <thead>
                     <tr>
-                      <th>Producto</th>
-                      <th class="text-end">💳 Tarjeta</th>
-                      <th class="text-end">💵 Efectivo</th>
-                      <th>Categoría</th>
-                      <th class="text-center" style="width:130px">Acciones</th>
+                      <th scope="col">Producto</th>
+                      <th scope="col" class="text-end">💳 Tarjeta</th>
+                      <th scope="col" class="text-end">💵 Efectivo</th>
+                      <th scope="col">Categoría</th>
+                      <th scope="col" class="text-center" style="width:130px">Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -223,35 +225,35 @@
                       <td v-else colspan="4">
                         <div class="row g-2">
                           <div class="col-md-3">
-                            <input v-model.trim="editingData.name" class="form-control form-control-sm" placeholder="Nombre" :disabled="isProcessing" />
+                            <input v-model.trim="editingData.name" class="form-control form-control-sm" placeholder="Nombre" aria-label="Nombre del producto" :disabled="isProcessing" />
                           </div>
                           <div class="col-md-2">
                             <div class="input-group">
-                              <span class="input-group-text">$</span>
-                              <input v-model.number="editingData.price" class="form-control form-control-sm" type="number" min="0" step="0.01" placeholder="Tarjeta" :disabled="isProcessing" />
+                              <span class="input-group-text" aria-hidden="true">$</span>
+                              <input v-model.number="editingData.price" class="form-control form-control-sm" type="number" min="0" step="0.01" placeholder="Tarjeta" aria-label="Precio con tarjeta" :disabled="isProcessing" />
                             </div>
                           </div>
                           <div class="col-md-2">
                             <div class="input-group">
-                              <span class="input-group-text">$</span>
-                              <input v-model.number="editingData.priceCash" class="form-control form-control-sm" type="number" min="0" step="0.01" placeholder="Efectivo" :disabled="isProcessing" />
+                              <span class="input-group-text" aria-hidden="true">$</span>
+                              <input v-model.number="editingData.priceCash" class="form-control form-control-sm" type="number" min="0" step="0.01" placeholder="Efectivo" aria-label="Precio en efectivo" :disabled="isProcessing" />
                             </div>
                           </div>
                           <div class="col-md-5">
-                            <select v-model.number="editingData.categoryId" class="form-select form-select-sm" :disabled="isProcessing">
+                            <select v-model.number="editingData.categoryId" class="form-select form-select-sm" aria-label="Categoría" :disabled="isProcessing">
                               <option value="" disabled>Categoría</option>
                               <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
                             </select>
                           </div>
                           <div class="col-md-5">
-                            <textarea v-model.trim="editingData.description" class="form-control form-control-sm" rows="1" placeholder="Descripción" :disabled="isProcessing"></textarea>
+                            <textarea v-model.trim="editingData.description" class="form-control form-control-sm" rows="1" placeholder="Descripción" aria-label="Descripción" :disabled="isProcessing"></textarea>
                           </div>
                           <div class="col-md-3">
-                            <input type="file" accept="image/*" class="form-control form-control-sm" :disabled="isProcessing || isUploadingImage"
+                            <input type="file" accept="image/*" class="form-control form-control-sm" aria-label="Cambiar imagen del producto" :disabled="isProcessing || isUploadingImage"
                               @change="handleImageUpload($event, editingData)" />
                           </div>
                           <div class="col-md-2">
-                            <input v-model.number="editingData.weightKg" type="number" min="0" step="0.1" class="form-control form-control-sm" placeholder="Peso (kg)" :disabled="isProcessing" />
+                            <input v-model.number="editingData.weightKg" type="number" min="0" step="0.1" class="form-control form-control-sm" placeholder="Peso (kg)" aria-label="Peso en kilogramos" :disabled="isProcessing" />
                           </div>
                           <div class="col-md-2">
                             <div class="form-check" style="margin-top:.4rem">
@@ -264,12 +266,12 @@
                       <td class="text-center">
                         <div class="d-flex justify-content-center gap-1">
                           <template v-if="editingId !== prod.id">
-                            <button class="btn btn-sm btn-warning btn-icon" @click="startEdit('product', prod)" :disabled="isProcessing">✎</button>
-                            <button class="btn btn-sm btn-danger btn-icon"  @click="handleDelete('product', prod.id)" :disabled="isProcessing">✕</button>
+                            <button class="btn btn-sm btn-warning btn-icon" @click="startEdit('product', prod)" :disabled="isProcessing" :aria-label="`Editar producto ${prod.name}`">✎</button>
+                            <button class="btn btn-sm btn-danger btn-icon"  @click="handleDelete('product', prod.id)" :disabled="isProcessing" :aria-label="`Eliminar producto ${prod.name}`">✕</button>
                           </template>
                           <template v-else>
-                            <button class="btn btn-sm btn-primary btn-icon"  @click="handleSaveEdit('product', prod.id)" :disabled="isProcessing">✓</button>
-                            <button class="btn btn-sm btn-secondary btn-icon" @click="cancelEdit" :disabled="isProcessing">✕</button>
+                            <button class="btn btn-sm btn-primary btn-icon"  @click="handleSaveEdit('product', prod.id)" :disabled="isProcessing" aria-label="Guardar cambios">✓</button>
+                            <button class="btn btn-sm btn-secondary btn-icon" @click="cancelEdit" :disabled="isProcessing" aria-label="Cancelar edición">✕</button>
                           </template>
                         </div>
                       </td>
@@ -278,27 +280,29 @@
                 </table>
 
                 <!-- Paginación -->
-                <div v-if="totalProductPages > 1" class="pagination-bar">
+                <nav v-if="totalProductPages > 1" class="pagination-bar" aria-label="Paginación de productos">
                   <span class="pagination-info">
                     {{ (productPage - 1) * productPageSize + 1 }}–{{ Math.min(productPage * productPageSize, filteredProducts.length) }}
                     de {{ filteredProducts.length }} productos
                   </span>
                   <div class="pagination-controls">
-                    <button class="btn btn-sm btn-secondary" @click="productPage = 1" :disabled="productPage <= 1" title="Primera">«</button>
-                    <button class="btn btn-sm btn-secondary" @click="productPage--" :disabled="productPage <= 1" title="Anterior">‹</button>
+                    <button class="btn btn-sm btn-secondary" @click="productPage = 1" :disabled="productPage <= 1" title="Primera" aria-label="Primera página">«</button>
+                    <button class="btn btn-sm btn-secondary" @click="productPage--" :disabled="productPage <= 1" title="Anterior" aria-label="Página anterior">‹</button>
                     <span class="pagination-pages">
                       <button
                         v-for="p in pageNumbers"
                         :key="p"
                         class="btn btn-sm"
                         :class="p === productPage ? 'btn-primary' : 'btn-secondary'"
+                        :aria-current="p === productPage ? 'page' : null"
+                        :aria-label="`Página ${p}`"
                         @click="productPage = p"
                       >{{ p }}</button>
                     </span>
-                    <button class="btn btn-sm btn-secondary" @click="productPage++" :disabled="productPage >= totalProductPages" title="Siguiente">›</button>
-                    <button class="btn btn-sm btn-secondary" @click="productPage = totalProductPages" :disabled="productPage >= totalProductPages" title="Última">»</button>
+                    <button class="btn btn-sm btn-secondary" @click="productPage++" :disabled="productPage >= totalProductPages" title="Siguiente" aria-label="Página siguiente">›</button>
+                    <button class="btn btn-sm btn-secondary" @click="productPage = totalProductPages" :disabled="productPage >= totalProductPages" title="Última" aria-label="Última página">»</button>
                   </div>
-                </div>
+                </nav>
               </div>
             </div>
           </div>
@@ -309,15 +313,15 @@
           <div class="tac-card">
             <div class="tac-card-header">
               <h5>Talles</h5>
-              <input v-model="filters.sizeSearch" class="form-control form-control-sm"
-                style="width:200px" placeholder="🔍 Buscar talle..." />
+              <input v-model="filters.sizeSearch" class="form-control form-control-sm size-search"
+                placeholder="🔍 Buscar talle..." aria-label="Buscar talle" />
             </div>
             <div class="tac-card-body">
               <!-- Add form -->
-              <form @submit.prevent="handleAddSize" class="section-form d-flex gap-2 align-items-end mb-3">
+              <form @submit.prevent="handleAddSize" class="section-form d-flex gap-2 align-items-end flex-wrap mb-3">
                 <div class="form-group flex-1">
-                  <label>Nuevo talle</label>
-                  <input v-model.trim="forms.size.name" class="form-control"
+                  <label for="new-size-name">Nuevo talle</label>
+                  <input id="new-size-name" v-model.trim="forms.size.name" class="form-control"
                     :class="{ 'is-invalid': errors.sizeName }"
                     placeholder="Ej: S, M, L, XL, 38, 40..." :disabled="isProcessing" />
                   <span v-if="errors.sizeName" class="invalid-feedback">{{ errors.sizeName }}</span>
@@ -339,18 +343,19 @@
                   <template v-if="editingId !== size.id">
                     <span class="size-label">{{ size.name }}</span>
                     <div class="d-flex gap-1">
-                      <button class="btn btn-sm btn-warning btn-icon" @click="startEdit('size', size)" :disabled="isProcessing">✎</button>
-                      <button class="btn btn-sm btn-danger btn-icon"  @click="handleDelete('size', size.id)" :disabled="isProcessing">✕</button>
+                      <button class="btn btn-sm btn-warning btn-icon" @click="startEdit('size', size)" :disabled="isProcessing" :aria-label="`Editar talle ${size.name}`">✎</button>
+                      <button class="btn btn-sm btn-danger btn-icon"  @click="handleDelete('size', size.id)" :disabled="isProcessing" :aria-label="`Eliminar talle ${size.name}`">✕</button>
                     </div>
                   </template>
                   <template v-else>
                     <input v-model.trim="editingName" class="form-control form-control-sm"
                       style="min-width:80px"
+                      aria-label="Nombre del talle"
                       @keyup.enter="handleSaveEdit('size', size.id)"
                       @keyup.esc="cancelEdit" :disabled="isProcessing" />
                     <div class="d-flex gap-1">
-                      <button class="btn btn-sm btn-primary btn-icon"   @click="handleSaveEdit('size', size.id)" :disabled="isProcessing">✓</button>
-                      <button class="btn btn-sm btn-secondary btn-icon" @click="cancelEdit" :disabled="isProcessing">✕</button>
+                      <button class="btn btn-sm btn-primary btn-icon"   @click="handleSaveEdit('size', size.id)" :disabled="isProcessing" aria-label="Guardar cambios">✓</button>
+                      <button class="btn btn-sm btn-secondary btn-icon" @click="cancelEdit" :disabled="isProcessing" aria-label="Cancelar edición">✕</button>
                     </div>
                   </template>
                 </div>
@@ -371,8 +376,8 @@
                 <div class="row g-2 align-items-end">
                   <div class="col-md-4">
                     <div class="form-group">
-                      <label>Usuario *</label>
-                      <input v-model.trim="forms.user.username" class="form-control"
+                      <label for="new-user-username">Usuario *</label>
+                      <input id="new-user-username" v-model.trim="forms.user.username" class="form-control"
                         :class="{ 'is-invalid': errors.userName }"
                         placeholder="Nombre de usuario" :disabled="isProcessing" />
                       <span v-if="errors.userName" class="invalid-feedback">{{ errors.userName }}</span>
@@ -380,8 +385,8 @@
                   </div>
                   <div class="col-md-4">
                     <div class="form-group">
-                      <label>Contraseña *</label>
-                      <input v-model="forms.user.password" type="password" class="form-control"
+                      <label for="new-user-password">Contraseña *</label>
+                      <input id="new-user-password" v-model="forms.user.password" type="password" class="form-control"
                         :class="{ 'is-invalid': errors.userPassword }"
                         placeholder="Contraseña" :disabled="isProcessing" />
                       <span v-if="errors.userPassword" class="invalid-feedback">{{ errors.userPassword }}</span>
@@ -389,8 +394,8 @@
                   </div>
                   <div class="col-md-2">
                     <div class="form-group">
-                      <label>Rol *</label>
-                      <select v-model="forms.user.role" class="form-select" :disabled="isProcessing">
+                      <label for="new-user-role">Rol *</label>
+                      <select id="new-user-role" v-model="forms.user.role" class="form-select" :disabled="isProcessing">
                         <option value="USER">USER</option>
                         <option value="ADMIN">ADMIN</option>
                       </select>
@@ -411,7 +416,7 @@
 
       <!-- Toast -->
       <transition name="toast">
-        <div v-if="toast.show" class="tac-toast" :class="`tac-toast-${toast.type}`">
+        <div v-if="toast.show" class="tac-toast" :class="`tac-toast-${toast.type}`" role="status" aria-live="polite">
           {{ toast.message }}
         </div>
       </transition>
@@ -732,4 +737,19 @@ export default {
 
 .toast-enter-active, .toast-leave-active { transition: all 0.25s ease; }
 .toast-enter-from, .toast-leave-to { opacity: 0; transform: translateY(10px); }
+
+.size-search { width: 200px; }
+
+@media (max-width: 700px) {
+  .tac-card-header { flex-wrap: wrap; gap: 0.6rem; align-items: stretch; }
+  .products-toolbar { width: 100%; flex-wrap: wrap; }
+  .search-wrapper, .search-input { width: 100%; }
+  .size-search { width: 100%; }
+}
+
+@media (max-width: 480px) {
+  .pagination-bar { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+  .pagination-controls { flex-wrap: wrap; }
+  .tac-toast { left: 1rem; right: 1rem; bottom: 1rem; text-align: center; }
+}
 </style>

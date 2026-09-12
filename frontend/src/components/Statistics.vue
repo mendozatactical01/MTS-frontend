@@ -20,14 +20,14 @@
       </div>
 
       <!-- Selector de rango -->
-      <div v-if="period === 'range'" class="section-form d-flex gap-2 align-items-end mb-4">
+      <div v-if="period === 'range'" class="section-form d-flex gap-2 align-items-end flex-wrap mb-4">
         <div class="form-group">
-          <label>Desde</label>
-          <input type="date" v-model="rangeFrom" class="form-control" />
+          <label for="stats-range-from">Desde</label>
+          <input id="stats-range-from" type="date" v-model="rangeFrom" class="form-control" />
         </div>
         <div class="form-group">
-          <label>Hasta</label>
-          <input type="date" v-model="rangeTo" class="form-control" />
+          <label for="stats-range-to">Hasta</label>
+          <input id="stats-range-to" type="date" v-model="rangeTo" class="form-control" />
         </div>
         <button class="btn btn-primary" @click="loadRange" :disabled="!rangeFrom || !rangeTo || isLoading">Consultar</button>
       </div>
@@ -121,7 +121,7 @@
               <div class="psb-legend">
                 <span class="psb-legend-dot psb-dot-cash"></span> Efectivo / Transf.
                 <span class="psb-legend-dot psb-dot-card" style="margin-left:1rem"></span> Tarjeta
-                <span style="margin-left:auto;font-family:var(--font-display);font-size:.75rem;color:var(--text-muted)">
+                <span class="psb-legend-dominant" style="margin-left:auto;font-family:var(--font-display);font-size:.75rem;color:var(--text-muted)">
                   Predomina: <strong style="color:var(--text-primary)">{{ cashPct >= cardPct ? '💵 Efectivo' : '💳 Tarjeta' }}</strong>
                 </span>
               </div>
@@ -210,13 +210,14 @@
         <div class="tac-card mt-3" v-if="data.salesByMonth && data.salesByMonth.length">
           <div class="tac-card-header"><h5>Detalle Mensual</h5></div>
           <div class="tac-card-body" style="padding:0">
+            <div class="table-responsive">
             <table class="tac-table">
               <thead>
                 <tr>
-                  <th>Mes</th>
-                  <th class="text-end">Total</th>
-                  <th class="text-center">Transacciones</th>
-                  <th class="text-end">Ticket Prom.</th>
+                  <th scope="col">Mes</th>
+                  <th scope="col" class="text-end">Total</th>
+                  <th scope="col" class="text-center">Transacciones</th>
+                  <th scope="col" class="text-end">Ticket Prom.</th>
                 </tr>
               </thead>
               <tbody>
@@ -236,6 +237,7 @@
                 </tr>
               </tfoot>
             </table>
+            </div>
           </div>
         </div>
       </div>
@@ -515,5 +517,10 @@ export default {
 @media (max-width: 500px) {
   .kpi-grid { grid-template-columns: 1fr; }
   .top-name { width: 100px; }
+  .period-tabs { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .pb-plus-sign { display: none; }
+  .pb-total-block { min-width: 100%; }
+  .psb-legend { flex-wrap: wrap; row-gap: 0.35rem; }
+  .psb-legend-dominant { margin-left: 0 !important; width: 100%; }
 }
 </style>

@@ -15,19 +15,19 @@
     <div class="trust-strip">
       <div class="trust-strip-inner">
         <div class="trust-item">
-          <span class="trust-item-icon">🚚</span>
+          <span class="trust-item-icon" aria-hidden="true">🚚</span>
           <span>Envíos a todo el país</span>
         </div>
         <div class="trust-item">
-          <span class="trust-item-icon">🔒</span>
+          <span class="trust-item-icon" aria-hidden="true">🔒</span>
           <span>Pago seguro con Mercado Pago</span>
         </div>
         <div class="trust-item">
-          <span class="trust-item-icon">📦</span>
+          <span class="trust-item-icon" aria-hidden="true">📦</span>
           <span>Stock real, sin sorpresas</span>
         </div>
         <div class="trust-item">
-          <span class="trust-item-icon">🎯</span>
+          <span class="trust-item-icon" aria-hidden="true">🎯</span>
           <span>Equipamiento profesional</span>
         </div>
       </div>
