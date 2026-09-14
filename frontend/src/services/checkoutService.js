@@ -1,7 +1,7 @@
 import httpPublic from './httpPublic'
 import { mockOrders, delay } from './mock/mockData'
 
-const USE_MOCK = true
+const USE_MOCK = false
 
 // checkoutRequest: { customerName, customerEmail, customerPhone, customerDni,
 //   shippingStreet, shippingNumber, shippingCity, shippingPostalCode,

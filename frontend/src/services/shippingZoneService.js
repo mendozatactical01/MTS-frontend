@@ -2,7 +2,7 @@ import axios from 'axios'
 import { mockShippingZones, delay } from './mock/mockData'
 
 const API_URL = import.meta.env.VITE_API_URL + '/api/shipping-zones'
-const USE_MOCK = true
+const USE_MOCK = false
 
 export function getAllZones() {
   if (USE_MOCK) return delay().then(() => ({ data: mockShippingZones }))

@@ -2,7 +2,7 @@ import axios from 'axios'
 import { mockCombos, delay } from './mock/mockData'
 
 const API_URL = import.meta.env.VITE_API_URL + '/api/combos'
-const USE_MOCK = true
+const USE_MOCK = false
 
 export function getAllCombos() {
   if (USE_MOCK) return delay().then(() => ({ data: mockCombos }))

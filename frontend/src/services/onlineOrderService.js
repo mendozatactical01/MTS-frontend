@@ -2,7 +2,7 @@ import axios from 'axios'
 import { mockOrders, delay } from './mock/mockData'
 
 const API_URL = import.meta.env.VITE_API_URL + '/api/online-orders'
-const USE_MOCK = true
+const USE_MOCK = false
 
 export function getAllOrders() {
   if (USE_MOCK) return delay().then(() => ({ data: mockOrders }))

@@ -5,7 +5,7 @@ import { mockProducts, mockCombos, mockShippingZones, delay } from './mock/mockD
 // funciones devuelven fixtures con la misma forma que van a tener las
 // respuestas reales. Cambiar a false reemplaza cada función por la llamada
 // real a httpPublic (ya están escritas, comentadas abajo de cada mock).
-const USE_MOCK = true
+const USE_MOCK = false
 
 export function getPublishedProducts({ categoryId, search } = {}) {
   if (USE_MOCK) {
