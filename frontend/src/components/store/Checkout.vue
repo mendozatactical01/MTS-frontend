@@ -178,7 +178,11 @@ export default {
         }
         const res = await createOrder(payload)
         clearCart()
-        this.$router.push(`/pedido/${res.data.accessToken}`)
+        if (res.data.initPoint) {
+          window.location.href = res.data.initPoint
+        } else {
+          this.$router.push(`/pedido/${res.data.accessToken}`)
+        }
       } catch (e) {
         this.error = e.response?.data?.message || 'No se pudo crear el pedido. Intentá de nuevo.'
       } finally {
