@@ -1,120 +1,100 @@
 <template>
   <StoreLayout>
-    <div class="hero">
+    <section class="hero">
+      <StoreEmblem class="hero-watermark" />
       <div class="hero-inner">
-        <div class="hero-badge">Equipamiento Táctico</div>
-        <h1 class="hero-title">Mendoza<br>Tactical Store</h1>
-        <p class="hero-subtitle">Indumentaria y equipamiento táctico, policial y de pesca. Envíos a todo el país.</p>
+        <p class="hero-kicker">Mendoza Tactical Store</p>
+        <h1 class="hero-title">Equipamiento táctico<br><span>de alto rendimiento</span></h1>
+        <p class="hero-subtitle">Indumentaria, accesorios de portación, outdoor y pesca. Stock real y envíos a todo el país.</p>
         <div class="hero-actions">
-          <router-link to="/tienda" class="btn btn-primary btn-lg">Ver catálogo →</router-link>
-          <a href="#combos" class="btn btn-secondary btn-lg">Ver combos</a>
+          <router-link to="/tienda" class="hero-btn hero-btn-primary">Ver productos</router-link>
+          <a v-if="combos.length" href="#combos" class="hero-btn hero-btn-ghost">Ver combos</a>
         </div>
+      </div>
+    </section>
+
+    <section class="home-block home-block-surface" aria-labelledby="novedades-title">
+      <div class="home-block-inner">
+        <header class="home-block-head">
+          <h2 id="novedades-title">Novedades</h2>
+          <p>Explorá nuestra colección de indumentaria y accesorios tácticos.</p>
+        </header>
+
+        <div v-if="loading" class="empty-state"><div class="spinner" style="margin:0 auto"></div></div>
+        <div v-else-if="products.length === 0" class="empty-state">
+          <div class="empty-state-icon">◇</div>
+          <p>Todavía no hay productos publicados</p>
+        </div>
+        <div v-else class="home-grid">
+          <StoreProductCard v-for="product in products.slice(0, 8)" :key="'prod-'+product.id" :item="product" />
+        </div>
+
+        <div v-if="!loading && products.length" class="home-block-foot">
+          <router-link to="/tienda" class="hero-btn hero-btn-ghost">Ver todos los productos</router-link>
+        </div>
+      </div>
+    </section>
+
+    <section v-if="combos.length" id="combos" class="home-block" aria-labelledby="combos-title">
+      <div class="home-block-inner">
+        <header class="home-block-head">
+          <h2 id="combos-title">Combos</h2>
+          <p>Equipos armados con lo que necesitás, a un mejor precio.</p>
+        </header>
+        <div class="home-grid">
+          <StoreProductCard v-for="combo in combos" :key="'combo-'+combo.id" :item="combo" combo />
+        </div>
+      </div>
+    </section>
+
+    <div class="ticker" aria-hidden="true">
+      <div class="ticker-track">
+        <span v-for="n in 16" :key="n">Envío a todo el país</span>
       </div>
     </div>
 
-    <div class="trust-strip">
-      <div class="trust-strip-inner">
-        <div class="trust-item">
-          <span class="trust-item-icon" aria-hidden="true">🚚</span>
-          <span>Envíos a todo el país</span>
+    <section class="benefits" aria-label="Beneficios">
+      <div class="benefits-inner">
+        <div class="benefit">
+          <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor" aria-hidden="true"><path d="M3 5h11v3h3.5L21 12v5h-2a2.5 2.5 0 0 1-5 0H9a2.5 2.5 0 0 1-5 0H3V5Zm11 5v3h5v-.2L16.7 10H14ZM6.5 16.2a.8.8 0 1 0 0 1.6.8.8 0 0 0 0-1.6Zm10 0a.8.8 0 1 0 0 1.6.8.8 0 0 0 0-1.6Z"/></svg>
+          <h3>Envíos operativos</h3>
+          <p>Despachamos a todo el país. Logística rápida y segura para que tu equipo llegue a tiempo a la misión.</p>
         </div>
-        <div class="trust-item">
-          <span class="trust-item-icon" aria-hidden="true">🔒</span>
-          <span>Pago seguro con Mercado Pago</span>
+        <div class="benefit">
+          <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor" aria-hidden="true"><path d="M2 6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6Zm2 2h16V6H4v2Zm0 3v7h16v-7H4Zm2 3h5v2H6v-2Z"/></svg>
+          <h3>Métodos de pago</h3>
+          <p>Pagá con tarjeta, transferencia o efectivo vía Mercado Pago. Precio especial pagando en efectivo o transferencia.</p>
         </div>
-        <div class="trust-item">
-          <span class="trust-item-icon" aria-hidden="true">📦</span>
-          <span>Stock real, sin sorpresas</span>
-        </div>
-        <div class="trust-item">
-          <span class="trust-item-icon" aria-hidden="true">🎯</span>
-          <span>Equipamiento profesional</span>
+        <div class="benefit">
+          <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3Zm0 2.2V12H6V6.4l6-2.2Zm0 7.8h6c-.5 4-3 7.3-6 8.4V12Z"/></svg>
+          <h3>Compra blindada</h3>
+          <p>Tus pagos se procesan en Mercado Pago, con stock real y seguimiento de tu pedido en todo momento.</p>
         </div>
       </div>
-    </div>
+    </section>
 
-    <div v-if="!loading && categories.length" class="section section-tight">
-      <div class="category-nav">
-        <router-link
-          v-for="cat in categories"
-          :key="cat.id"
-          :to="{ path: '/tienda', query: { category: cat.id } }"
-          class="category-chip"
-        >{{ cat.name }}</router-link>
+    <section class="elite" aria-labelledby="elite-title">
+      <StoreEmblem class="elite-watermark" />
+      <div class="elite-inner">
+        <h2 id="elite-title">Equipamiento de élite</h2>
+        <p>Indumentaria, portación, outdoor y pesca: todo lo que tu misión necesita, en un solo lugar.</p>
+        <router-link to="/tienda" class="hero-btn hero-btn-primary">Explorar catálogo</router-link>
       </div>
-    </div>
-
-    <div id="combos" class="section">
-      <div class="section-header">
-        <h2>Combos destacados</h2>
-        <router-link to="/tienda" class="section-link">Ver todo →</router-link>
-      </div>
-      <div v-if="loading" class="empty-state"><div class="spinner" style="margin:0 auto"></div></div>
-      <div v-else-if="combos.length === 0" class="empty-state">
-        <div class="empty-state-icon">◇</div>
-        <p>Todavía no hay combos publicados</p>
-      </div>
-      <div v-else class="product-grid">
-        <router-link v-for="combo in combos" :key="'combo-'+combo.id" :to="`/combo/${combo.id}`" class="product-card">
-          <div class="product-card-img" :style="{ backgroundImage: `url(${combo.imageUrl})` }">
-            <span class="badge badge-amber product-card-tag">Combo</span>
-          </div>
-          <div class="product-card-body">
-            <h3>{{ combo.name }}</h3>
-            <p class="product-card-price">${{ formatMoney(combo.price) }}</p>
-          </div>
-        </router-link>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-header">
-        <h2>Productos destacados</h2>
-        <router-link to="/tienda" class="section-link">Ver todo →</router-link>
-      </div>
-      <div v-if="loading" class="empty-state"><div class="spinner" style="margin:0 auto"></div></div>
-      <div v-else class="product-grid">
-        <router-link v-for="product in products.slice(0, 4)" :key="'prod-'+product.id" :to="`/producto/${product.id}`" class="product-card">
-          <div class="product-card-img" :style="{ backgroundImage: `url(${product.imageUrl})` }"></div>
-          <div class="product-card-body">
-            <h3>{{ product.name }}</h3>
-            <p class="product-card-price">
-              <template v-if="product.priceCash">${{ formatMoney(product.priceCash) }} <span class="price-strike">${{ formatMoney(product.price) }}</span></template>
-              <template v-else>${{ formatMoney(product.price) }}</template>
-            </p>
-          </div>
-        </router-link>
-      </div>
-    </div>
-
-    <div class="cta-banner">
-      <div class="cta-banner-inner">
-        <div>
-          <h2>¿Buscás algo puntual?</h2>
-          <p>Filtrá por categoría, precio y disponibilidad en el catálogo completo.</p>
-        </div>
-        <router-link to="/tienda" class="btn btn-primary btn-lg">Explorar catálogo →</router-link>
-      </div>
-    </div>
+    </section>
   </StoreLayout>
 </template>
 
 <script>
 import StoreLayout from './StoreLayout.vue'
+import StoreEmblem from './StoreEmblem.vue'
+import StoreProductCard from './StoreProductCard.vue'
 import { getPublishedProducts, getPublishedCombos } from '../../services/storeService'
 
 export default {
   name: 'StoreHome',
-  components: { StoreLayout },
+  components: { StoreLayout, StoreEmblem, StoreProductCard },
   data() {
     return { products: [], combos: [], loading: true }
-  },
-  computed: {
-    categories() {
-      const map = new Map()
-      this.products.forEach(p => { if (p.category) map.set(p.category.id, p.category) })
-      return [...map.values()]
-    }
   },
   async mounted() {
     try {
@@ -124,81 +104,116 @@ export default {
     } finally {
       this.loading = false
     }
-  },
-  methods: {
-    formatMoney(v) { return Number(v || 0).toLocaleString('es-AR') }
   }
 }
 </script>
 
 <style scoped>
+/* ── Hero ───────────────────────────────────────────────────── */
 .hero {
-  background: linear-gradient(135deg, var(--bg-surface), var(--bg-base));
-  border-bottom: 1px solid var(--border);
+  position: relative; overflow: hidden; min-height: min(72vh, 640px);
+  display: flex; align-items: center; justify-content: center; text-align: center;
   padding: 4rem 1.25rem;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 120%, rgba(139, 26, 26, 0.45), transparent 60%),
+    linear-gradient(180deg, #050606 0%, var(--bg-base) 100%);
 }
 .hero::before {
-  content: '';
-  position: absolute;
-  inset: 0;
+  content: ''; position: absolute; inset: 0; pointer-events: none;
   background-image:
-    linear-gradient(var(--border) 1px, transparent 1px),
-    linear-gradient(90deg, var(--border) 1px, transparent 1px);
-  background-size: 42px 42px;
-  opacity: 0.15;
-  mask-image: radial-gradient(ellipse at center, black 0%, transparent 75%);
+    linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse at center, black 10%, transparent 75%);
 }
-.hero-inner { max-width: 640px; margin: 0 auto; position: relative; }
-.hero-badge {
-  display: inline-block; font-family: var(--font-display); font-size: 0.72rem; font-weight: 700;
-  letter-spacing: 0.12em; text-transform: uppercase; color: var(--crimson-light);
-  background: var(--crimson-glow); border: 1px solid var(--crimson-dark);
-  border-radius: 12px; padding: 0.25rem 0.75rem; margin-bottom: 1rem;
+.hero-watermark {
+  position: absolute; top: 50%; left: 50%; width: min(560px, 90vw); height: auto;
+  transform: translate(-50%, -50%); color: var(--crimson); opacity: 0.12; pointer-events: none;
 }
-.hero-title { font-size: 2.6rem; line-height: 1.1; margin-bottom: 1rem; }
-.hero-subtitle { color: var(--text-secondary); font-size: 1.05rem; margin-bottom: 1.75rem; }
-.hero-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+.hero-inner { position: relative; max-width: 820px; }
+.hero-kicker {
+  font-family: var(--font-display); font-weight: 600; font-size: 0.95rem;
+  letter-spacing: 0.35em; text-transform: uppercase; color: var(--crimson-light); margin-bottom: 1rem;
+}
+.hero-title {
+  font-size: clamp(2.4rem, 6vw, 4.6rem); font-weight: 800; line-height: 1;
+  letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 1.25rem;
+}
+.hero-title span { color: var(--text-secondary); }
+.hero-subtitle {
+  color: var(--text-secondary); font-size: 1.1rem; max-width: 560px; margin: 0 auto 2rem;
+}
+.hero-actions { display: flex; gap: 0.85rem; justify-content: center; flex-wrap: wrap; }
 
-/* Trust strip */
-.trust-strip { background: var(--bg-card); border-bottom: 1px solid var(--border); }
-.trust-strip-inner {
-  max-width: 1200px; margin: 0 auto; padding: 1rem 1.25rem;
-  display: flex; flex-wrap: wrap; gap: 0.75rem 2rem; justify-content: center;
+.hero-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 700; font-size: 1rem;
+  letter-spacing: 0.12em; text-transform: uppercase; text-decoration: none;
+  padding: 0.85rem 2rem; border: 2px solid transparent; transition: var(--transition);
 }
-.trust-item {
-  display: flex; align-items: center; gap: 0.5rem;
-  font-size: 0.85rem; color: var(--text-secondary); white-space: nowrap;
-}
-.trust-item-icon { font-size: 1.05rem; }
+.hero-btn-primary { background: var(--crimson); color: #fff; border-color: var(--crimson); }
+.hero-btn-primary:hover { background: var(--crimson-light); border-color: var(--crimson-light); }
+.hero-btn-ghost { background: transparent; color: var(--text-primary); border-color: var(--text-primary); }
+.hero-btn-ghost:hover { background: var(--text-primary); color: var(--text-inverse); }
 
-/* Category quick nav */
-.section-tight { padding-top: 1.75rem; padding-bottom: 0; }
-.category-nav { display: flex; flex-wrap: wrap; gap: 0.6rem; }
-.category-chip {
-  font-family: var(--font-display); font-weight: 600; font-size: 0.8rem;
-  letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-secondary);
-  background: var(--bg-card); border: 1px solid var(--border); border-radius: 50px;
-  padding: 0.4rem 0.9rem; text-decoration: none; transition: var(--transition);
+/* ── Bloques de productos ───────────────────────────────────── */
+.home-block { padding: 4rem 1.25rem; }
+.home-block-surface { background: var(--bg-surface); }
+.home-block-inner { max-width: 1400px; margin: 0 auto; }
+.home-block-head { text-align: center; margin-bottom: 2.25rem; }
+.home-block-head h2 {
+  font-size: clamp(1.8rem, 3.5vw, 2.4rem); letter-spacing: 0.12em; text-transform: uppercase;
+  margin-bottom: 0.4rem;
 }
-.category-chip:hover { color: var(--text-primary); border-color: var(--crimson-dark); background: var(--bg-hover); }
-
-/* CTA banner */
-.cta-banner { max-width: 1200px; margin: 0 auto 3rem; padding: 0 1.25rem; }
-.cta-banner-inner {
-  background: linear-gradient(135deg, var(--crimson-glow), var(--bg-card));
-  border: 1px solid var(--crimson-dark); border-radius: var(--radius-lg);
-  padding: 2rem; display: flex; align-items: center; justify-content: space-between;
-  gap: 1.5rem; flex-wrap: wrap;
+.home-block-head h2::after {
+  content: ''; display: block; width: 56px; height: 3px; background: var(--crimson);
+  margin: 0.6rem auto 0;
 }
-.cta-banner-inner h2 { font-size: 1.5rem; margin-bottom: 0.35rem; }
-.cta-banner-inner p { color: var(--text-secondary); font-size: 0.92rem; }
+.home-block-head p { color: var(--text-secondary); }
+.home-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem 1rem; }
+.home-block-foot { text-align: center; margin-top: 2.5rem; }
 
-@media (max-width: 640px) {
-  .hero { padding: 2.5rem 1rem; }
-  .hero-title { font-size: 2rem; }
-  .cta-banner-inner { padding: 1.5rem; text-align: center; justify-content: center; }
+/* ── Ticker ─────────────────────────────────────────────────── */
+.ticker { background: var(--crimson-dark); overflow: hidden; white-space: nowrap; }
+.ticker-track { display: inline-flex; animation: ticker 40s linear infinite; }
+.ticker-track span {
+  font-family: var(--font-display); font-weight: 700; font-size: 1.05rem;
+  letter-spacing: 0.14em; text-transform: uppercase; color: #fff; padding: 1.1rem 2.5rem;
+}
+@keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+/* ── Beneficios ─────────────────────────────────────────────── */
+.benefits { background: var(--bg-card); border-bottom: 1px solid var(--border); }
+.benefits-inner {
+  max-width: 1200px; margin: 0 auto; padding: 3.5rem 1.25rem;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 2.5rem;
+}
+.benefit { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 0.6rem; }
+.benefit svg { color: var(--crimson-light); }
+.benefit h3 { font-size: 1.4rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.benefit p { color: var(--text-secondary); max-width: 320px; }
+
+/* ── Bloque final ───────────────────────────────────────────── */
+.elite { position: relative; overflow: hidden; background: #050606; padding: 5rem 1.25rem; text-align: center; }
+.elite-watermark {
+  position: absolute; top: 50%; left: 50%; width: 420px; height: auto;
+  transform: translate(-50%, -50%); color: #fff; opacity: 0.05; pointer-events: none;
+}
+.elite-inner { position: relative; max-width: 760px; margin: 0 auto; }
+.elite h2 {
+  font-size: clamp(1.9rem, 4.5vw, 3rem); font-weight: 500; letter-spacing: 0.18em;
+  text-transform: uppercase; margin-bottom: 1rem;
+}
+.elite p { color: var(--text-secondary); font-size: 1.05rem; margin-bottom: 2rem; }
+
+@media (max-width: 1024px) {
+  .home-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 760px) {
+  .home-grid { grid-template-columns: repeat(2, 1fr); gap: 1.25rem 0.75rem; }
+  .home-block { padding: 3rem 1rem; }
+  .benefits-inner { grid-template-columns: 1fr; gap: 2rem; padding: 2.75rem 1rem; }
+  .hero { min-height: 0; padding: 3.5rem 1rem; }
+  .hero-btn { padding: 0.75rem 1.4rem; }
 }
 </style>

@@ -51,15 +51,7 @@
           <div v-if="filteredCombos.length" class="catalog-group">
             <h2 class="catalog-group-title">Combos</h2>
             <div class="product-grid">
-              <router-link v-for="combo in filteredCombos" :key="'combo-'+combo.id" :to="`/combo/${combo.id}`" class="product-card">
-                <div class="product-card-img" :style="{ backgroundImage: `url(${combo.imageUrl})` }">
-                  <span class="badge badge-amber product-card-tag">Combo</span>
-                </div>
-                <div class="product-card-body">
-                  <h3>{{ combo.name }}</h3>
-                  <p class="product-card-price">${{ formatMoney(combo.price) }}</p>
-                </div>
-              </router-link>
+              <StoreProductCard v-for="combo in filteredCombos" :key="'combo-'+combo.id" :item="combo" combo />
             </div>
           </div>
 
@@ -79,20 +71,7 @@
               <p>No se encontraron productos</p>
             </div>
             <div v-else class="product-grid">
-              <router-link v-for="product in sortedProducts" :key="'prod-'+product.id" :to="`/producto/${product.id}`" class="product-card">
-                <div class="product-card-img" :style="{ backgroundImage: `url(${product.imageUrl})` }">
-                  <div v-if="!product.available" class="product-card-unavailable">
-                    <span class="badge badge-neutral">Sin stock</span>
-                  </div>
-                </div>
-                <div class="product-card-body">
-                  <h3>{{ product.name }}</h3>
-                  <p class="product-card-price">
-                    <template v-if="product.priceCash">${{ formatMoney(product.priceCash) }} <span class="price-strike">${{ formatMoney(product.price) }}</span></template>
-                    <template v-else>${{ formatMoney(product.price) }}</template>
-                  </p>
-                </div>
-              </router-link>
+              <StoreProductCard v-for="product in sortedProducts" :key="'prod-'+product.id" :item="product" />
             </div>
           </div>
         </div>
@@ -103,11 +82,12 @@
 
 <script>
 import StoreLayout from './StoreLayout.vue'
+import StoreProductCard from './StoreProductCard.vue'
 import { getPublishedProducts, getPublishedCombos } from '../../services/storeService'
 
 export default {
   name: 'StoreCatalog',
-  components: { StoreLayout },
+  components: { StoreLayout, StoreProductCard },
   data() {
     return {
       products: [], combos: [], loading: true,
@@ -154,12 +134,10 @@ export default {
       return this.combos.filter(c => c.name.toLowerCase().includes(q))
     }
   },
+  watch: {
+    '$route.query': { handler: 'applyRouteQuery', immediate: true }
+  },
   async mounted() {
-    const catQuery = this.$route.query.category
-    if (catQuery !== undefined) {
-      this.categoryFilter = isNaN(catQuery) ? catQuery : Number(catQuery)
-      this.showFilters = true
-    }
     try {
       const [productsRes, combosRes] = await Promise.all([getPublishedProducts(), getPublishedCombos()])
       this.products = productsRes.data
@@ -169,9 +147,15 @@ export default {
     }
   },
   methods: {
-    formatMoney(v) { return Number(v || 0).toLocaleString('es-AR') },
+    applyRouteQuery(query) {
+      const catQuery = query.category
+      this.categoryFilter = catQuery === undefined ? '' : (isNaN(catQuery) ? catQuery : Number(catQuery))
+      this.search = query.search || ''
+      if (catQuery !== undefined) this.showFilters = true
+    },
     clearFilters() {
       this.categoryFilter = ''
+      this.search = ''
       this.onlyAvailable = false
     }
   }
@@ -183,7 +167,7 @@ export default {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 1.5rem; gap: 1rem;
 }
-.catalog-page-header h1 { font-size: 1.8rem; }
+.catalog-page-header h1 { font-size: 2.2rem; letter-spacing: 0.1em; text-transform: uppercase; }
 .catalog-filter-toggle { display: none; align-items: center; gap: 0.4rem; }
 .catalog-filter-count { padding: 0.05rem 0.4rem; font-size: 0.65rem; }
 
@@ -219,7 +203,8 @@ export default {
   display: flex; align-items: baseline; justify-content: space-between;
   gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;
 }
-.catalog-group-title { font-size: 1.1rem; color: var(--text-secondary); }
+.catalog-group-title { font-size: 1.1rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.08em; }
+.catalog-content .product-grid { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 1.5rem 1rem; }
 .catalog-count { color: var(--text-muted); font-family: var(--font-body); font-weight: 400; letter-spacing: 0; }
 .catalog-sort { width: auto; min-width: 190px; }
 
