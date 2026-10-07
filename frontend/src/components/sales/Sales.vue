@@ -6,6 +6,30 @@
         <div class="topbar-time-display">{{ currentDateTime }}</div>
       </div>
 
+      <!-- Resumen -->
+      <div class="kpi-grid mb-4">
+        <div class="kpi-card kpi-main">
+          <div class="kpi-label">Total Vendido</div>
+          <div class="kpi-value">${{ formatMoney(salesStats.total) }}</div>
+          <div class="kpi-sub">{{ periodLabel }}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Ventas</div>
+          <div class="kpi-value">{{ salesStats.count }}</div>
+          <div class="kpi-sub">{{ periodLabel }}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Ticket Promedio</div>
+          <div class="kpi-value">${{ formatMoney(salesStats.avg) }}</div>
+          <div class="kpi-sub">por venta</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Pendientes</div>
+          <div class="kpi-value" :style="salesStats.pendingCount > 0 ? 'color:var(--amber-light)' : ''">{{ salesStats.pendingCount }}</div>
+          <div class="kpi-sub">entregas por completar</div>
+        </div>
+      </div>
+
       <!-- ── TABS ──────────────────────────────────────── -->
       <div class="tac-tabs mb-3" role="tablist">
         <button class="tac-tab" role="tab" :aria-selected="activeTab === 'sales'" :class="{ active: activeTab === 'sales' }" @click="activeTab = 'sales'">
@@ -659,6 +683,17 @@ export default {
       const t = this.sales.reduce((s, x) => s + (x.total || 0), 0)
       return `${this.sales.length} venta(s) · $${t.toFixed(0)}`
     },
+    salesStats() {
+      const count = this.sales.length
+      const total = this.sales.reduce((s, x) => s + (x.total || 0), 0)
+      return { count, total, avg: count ? total / count : 0, pendingCount: this.pendingSales.length }
+    },
+    periodLabel() {
+      const { timeFilter, specificDate } = this.salesFilters
+      if (timeFilter === 'all') return 'histórico'
+      if (timeFilter === 'byDate') return specificDate ? new Date(specificDate + 'T00:00:00').toLocaleDateString('es-AR') : 'fecha específica'
+      return 'hoy'
+    },
     editSubtotal() {
       if (!this.editModal.sale) return 0
       return this.editModal.sale.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0)
@@ -728,7 +763,7 @@ export default {
     },
     async initializeData() {
       this.isLoading = true
-      try { await Promise.all([this.fetchProducts(), this.fetchSizes(), this.fetchStock(), this.fetchSales()]) }
+      try { await Promise.all([this.fetchProducts(), this.fetchSizes(), this.fetchStock(), this.fetchSales(), this.fetchPendingSales()]) }
       catch { this.showToast('error', 'Error al cargar datos') }
       finally { this.isLoading = false }
     },
@@ -923,7 +958,8 @@ export default {
         this.isProcessing = false
       }
     },
-    showToast(type, message) { this.toast = { show: true, type, message }; setTimeout(() => { this.toast.show = false }, 3200) }
+    showToast(type, message) { this.toast = { show: true, type, message }; setTimeout(() => { this.toast.show = false }, 3200) },
+    formatMoney(v) { return Number(v || 0).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) }
   }
 }
 </script>
@@ -932,6 +968,41 @@ export default {
 .topbar-time-display {
   font-family: var(--font-display); font-size: 0.82rem;
   color: var(--text-muted); letter-spacing: 0.04em; text-transform: capitalize;
+}
+
+/* KPI grid */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr 1fr;
+  gap: 1rem;
+}
+.kpi-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 1.25rem;
+  position: relative; overflow: hidden;
+}
+.kpi-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0;
+  height: 2px; background: var(--border);
+}
+.kpi-main::before { background: var(--crimson); }
+.kpi-label {
+  font-family: var(--font-display); font-size: 0.7rem; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+.kpi-value {
+  font-family: var(--font-display); font-size: 2rem; font-weight: 800;
+  color: var(--text-primary); line-height: 1;
+}
+.kpi-main .kpi-value { font-size: 2.5rem; color: var(--crimson-light); }
+.kpi-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem; }
+
+@media (max-width: 700px) {
+  .kpi-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 480px) {
+  .kpi-grid { grid-template-columns: 1fr; }
 }
 .section-form-label {
   font-size: .75rem; font-family: var(--font-display); letter-spacing: .06em;

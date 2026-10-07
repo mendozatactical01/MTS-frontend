@@ -9,21 +9,51 @@
         </button>
       </div>
 
+      <!-- Resumen de stock -->
+      <div class="kpi-grid mb-4">
+        <div class="kpi-card kpi-main">
+          <div class="kpi-label">Unidades en Stock</div>
+          <div class="kpi-value">{{ stockStats.totalUnits }}</div>
+          <div class="kpi-sub">en {{ stockStats.categories }} categoría(s)</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Críticos</div>
+          <div class="kpi-value" style="color:var(--red-light)">{{ stockStats.critical }}</div>
+          <div class="kpi-sub">&lt; 3 unidades</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Stock Bajo</div>
+          <div class="kpi-value" style="color:var(--amber-light)">{{ stockStats.low }}</div>
+          <div class="kpi-sub">3 a 6 unidades</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Categorías</div>
+          <div class="kpi-value">{{ stockStats.categories }}</div>
+          <div class="kpi-sub">con productos</div>
+        </div>
+      </div>
+
       <!-- Buscadores -->
       <div class="row g-2 mb-3">
-        <div class="col-md-6">
+        <div class="col-md-5">
           <div class="search-wrapper">
             <span class="search-icon" aria-hidden="true">⌕</span>
             <input v-model="filters.productSearch" class="form-control search-input" placeholder="Buscar producto o categoría..." aria-label="Buscar producto o categoría" />
             <button v-if="filters.productSearch" class="search-clear" @click="filters.productSearch = ''" aria-label="Limpiar búsqueda de producto">✕</button>
           </div>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-5">
           <div class="search-wrapper">
             <span class="search-icon" aria-hidden="true">⌕</span>
             <input v-model="filters.sizeSearch" class="form-control search-input" placeholder="Filtrar talle (ej: S, M, 40...)" aria-label="Filtrar por talle" />
             <button v-if="filters.sizeSearch" class="search-clear" @click="filters.sizeSearch = ''" aria-label="Limpiar filtro de talle">✕</button>
           </div>
+        </div>
+        <div class="col-md-2 d-flex align-items-center">
+          <button type="button" class="btn btn-sm w-100" :class="filters.onlyLowStock ? 'btn-warning-soft' : 'btn-secondary'"
+            @click="filters.onlyLowStock = !filters.onlyLowStock" :aria-pressed="filters.onlyLowStock">
+            ⚠ {{ filters.onlyLowStock ? 'Bajo/crítico' : 'Ver bajo/crítico' }}
+          </button>
         </div>
       </div>
 
@@ -199,7 +229,8 @@
           </div>
           <div v-else-if="Object.keys(stockByCategory).length === 0" class="empty-state">
             <div class="empty-state-icon">▦</div>
-            <p>Sin datos de stock</p>
+            <p v-if="filters.onlyLowStock">Ningún producto con stock bajo o crítico 🎉</p>
+            <p v-else>Sin datos de stock</p>
           </div>
           <div v-else>
             <div v-for="(prods, category) in stockByCategory" :key="category" class="category-block">
@@ -355,7 +386,7 @@ export default {
   data() {
     return {
       stock: [], products: [], sizes: [],
-      filters: { productSearch: '', sizeSearch: '' },
+      filters: { productSearch: '', sizeSearch: '', onlyLowStock: false },
       collapsedCategories: {},
       adjustForm: { productId: '', sizeId: '', quantity: 1, action: 'add' },
       bulkLoad: { show: false, rows: [] },
@@ -378,12 +409,21 @@ export default {
     },
     stockByCategory() {
       const g = {}
-      this.filteredProducts.forEach(p => {
+      let list = this.filteredProducts
+      if (this.filters.onlyLowStock) list = list.filter(p => this.productTotal(p.id) <= 6)
+      list.forEach(p => {
         const cat = p.category?.name || 'Sin categoría'
         if (!g[cat]) g[cat] = []
         g[cat].push(p)
       })
       return g
+    },
+    stockStats() {
+      const totalUnits = this.stock.reduce((sum, i) => sum + (i.quantity || 0), 0)
+      const critical = this.stock.filter(i => i.quantity < 3).length
+      const low = this.stock.filter(i => i.quantity >= 3 && i.quantity <= 6).length
+      const categories = new Set(this.products.map(p => p.category?.name || 'Sin categoría')).size
+      return { totalUnits, critical, low, categories }
     },
     currentStock() {
       if (!this.adjustForm.productId) return '-'
@@ -762,13 +802,54 @@ export default {
 /* Stock level OK ahora en verde */
 .stock-ok { color: #22c55e; border-color: rgba(34, 197, 94, 0.4); }
 
+/* KPI grid */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr 1fr;
+  gap: 1rem;
+}
+.kpi-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 1.25rem;
+  position: relative; overflow: hidden;
+}
+.kpi-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0;
+  height: 2px; background: var(--border);
+}
+.kpi-main::before { background: var(--crimson); }
+.kpi-label {
+  font-family: var(--font-display); font-size: 0.7rem; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+.kpi-value {
+  font-family: var(--font-display); font-size: 2rem; font-weight: 800;
+  color: var(--text-primary); line-height: 1;
+}
+.kpi-main .kpi-value { font-size: 2.5rem; color: var(--crimson-light); }
+.kpi-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem; }
+
+.btn-warning-soft {
+  background: rgba(201, 125, 44, 0.12);
+  color: var(--amber-light);
+  border: 1px solid rgba(201, 125, 44, 0.3);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+}
+.btn-warning-soft:hover { background: rgba(201, 125, 44, 0.22); color: var(--amber-light); }
+
 @media (max-width: 700px) {
   .category-header, .bulk-header { flex-wrap: wrap; }
   .bulk-actions { flex-direction: column; align-items: stretch; gap: 0.5rem; }
   .bulk-actions > .d-flex { flex-wrap: wrap; }
+  .kpi-grid { grid-template-columns: 1fr 1fr; }
 }
 
 @media (max-width: 480px) {
+  .kpi-grid { grid-template-columns: 1fr; }
   .tac-toast { left: 1rem; right: 1rem; bottom: 1rem; text-align: center; }
 }
 </style>
