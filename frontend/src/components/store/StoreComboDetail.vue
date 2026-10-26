@@ -11,9 +11,9 @@
       </div>
 
       <div v-else class="detail-grid">
-        <div class="detail-img" role="img" :aria-label="`Combo: ${combo.name}`" :style="{ backgroundImage: `url(${combo.imageUrl})` }">
+        <StoreImageGallery :images="combo.images" :fallback="combo.imageUrl" :alt="`Combo: ${combo.name}`">
           <span class="badge badge-amber detail-tag">Combo</span>
-        </div>
+        </StoreImageGallery>
 
         <div class="detail-info">
           <h1>{{ combo.name }}</h1>
@@ -86,12 +86,13 @@
 
 <script>
 import StoreLayout from './StoreLayout.vue'
+import StoreImageGallery from './StoreImageGallery.vue'
 import { getPublishedComboById } from '../../services/storeService'
 import { addItem } from '../../services/cartService'
 
 export default {
   name: 'StoreComboDetail',
-  components: { StoreLayout },
+  components: { StoreLayout, StoreImageGallery },
   data() {
     // selections: { [comboItemId]: { productId, sizeId } }
     return { combo: null, loading: true, quantity: 1, added: false, selections: {}, selectionError: '' }

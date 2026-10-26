@@ -11,7 +11,7 @@
       </div>
 
       <div v-else class="detail-grid">
-        <div class="detail-img" role="img" :aria-label="product.name" :style="{ backgroundImage: `url(${product.imageUrl})` }"></div>
+        <StoreImageGallery :images="product.images" :fallback="product.imageUrl" :alt="product.name" />
 
         <div class="detail-info">
           <span class="badge badge-neutral">{{ product.category?.name }}</span>
@@ -62,12 +62,13 @@
 
 <script>
 import StoreLayout from './StoreLayout.vue'
+import StoreImageGallery from './StoreImageGallery.vue'
 import { getPublishedProductById } from '../../services/storeService'
 import { addItem } from '../../services/cartService'
 
 export default {
   name: 'StoreProductDetail',
-  components: { StoreLayout },
+  components: { StoreLayout, StoreImageGallery },
   data() {
     return { product: null, loading: true, selectedSizeId: null, quantity: 1, sizeError: '', added: false }
   },

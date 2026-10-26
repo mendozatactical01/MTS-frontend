@@ -157,7 +157,7 @@
                     </div>
                   </div>
                   <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary w-100" :disabled="!canAddProduct || isProcessing">
+                    <button type="submit" class="btn btn-primary w-100" :disabled="!canAddProduct || isProcessing || isUploadingImage">
                       <span v-if="isProcessing" class="spinner spinner-sm"></span>
                       <span v-else>+ Agregar</span>
                     </button>
@@ -172,12 +172,11 @@
                       <textarea id="new-product-description" v-model.trim="forms.product.description" class="form-control form-control-sm" rows="1" :disabled="isProcessing"></textarea>
                     </div>
                   </div>
-                  <div class="col-md-3">
+                  <div class="col-12 order-last">
                     <div class="form-group">
-                      <label for="new-product-image">Imagen</label>
-                      <input id="new-product-image" type="file" accept="image/*" class="form-control form-control-sm" :disabled="isProcessing || isUploadingImage"
-                        @change="handleImageUpload($event, forms.product)" />
-                      <span v-if="forms.product.imageUrl" style="font-size:.72rem;color:var(--crimson-light)">✓ Imagen cargada</span>
+                      <label for="new-product-images">Fotos (tienda online)</label>
+                      <ImageListEditor v-model="forms.product.images" folder="products" input-id="new-product-images" :disabled="isProcessing"
+                        @uploading="isUploadingImage = $event" @error="showToast('error', $event)" />
                     </div>
                   </div>
                   <div class="col-md-2">
@@ -248,9 +247,9 @@
                           <div class="col-md-5">
                             <textarea v-model.trim="editingData.description" class="form-control form-control-sm" rows="1" placeholder="Descripción" aria-label="Descripción" :disabled="isProcessing"></textarea>
                           </div>
-                          <div class="col-md-3">
-                            <input type="file" accept="image/*" class="form-control form-control-sm" aria-label="Cambiar imagen del producto" :disabled="isProcessing || isUploadingImage"
-                              @change="handleImageUpload($event, editingData)" />
+                          <div class="col-12 order-last">
+                            <ImageListEditor v-model="editingData.images" folder="products" :disabled="isProcessing || loadingEditImages"
+                              @uploading="isUploadingImage = $event" @error="showToast('error', $event)" />
                           </div>
                           <div class="col-md-2">
                             <input v-model.number="editingData.weightKg" type="number" min="0" step="0.1" class="form-control form-control-sm" placeholder="Peso (kg)" aria-label="Peso en kilogramos" :disabled="isProcessing" />
@@ -270,7 +269,7 @@
                             <button class="btn btn-sm btn-danger btn-icon"  @click="handleDelete('product', prod.id)" :disabled="isProcessing" :aria-label="`Eliminar producto ${prod.name}`">✕</button>
                           </template>
                           <template v-else>
-                            <button class="btn btn-sm btn-primary btn-icon"  @click="handleSaveEdit('product', prod.id)" :disabled="isProcessing" aria-label="Guardar cambios">✓</button>
+                            <button class="btn btn-sm btn-primary btn-icon"  @click="handleSaveEdit('product', prod.id)" :disabled="isProcessing || isUploadingImage || loadingEditImages" aria-label="Guardar cambios">✓</button>
                             <button class="btn btn-sm btn-secondary btn-icon" @click="cancelEdit" :disabled="isProcessing" aria-label="Cancelar edición">✕</button>
                           </template>
                         </div>
@@ -427,20 +426,22 @@
 <script>
 import BaseLayout from './BaseLayout.vue'
 import { getAllCategories, addCategory, deleteCategory, editCategory } from '../services/categoryService'
-import { getAllProducts, addProduct, deleteProduct, editProduct, uploadImage } from '../services/productService'
+import { getAllProducts, addProduct, deleteProduct, editProduct } from '../services/productService'
+import { getProductImages, saveProductImages } from '../services/productImageService'
+import ImageListEditor from './admin/ImageListEditor.vue'
 import { getAllSizes, addSize, deleteSize, editSize } from '../services/sizeService'
 import { register } from '../services/authService'
 
 export default {
   name: 'Admin',
-  components: { BaseLayout },
+  components: { BaseLayout, ImageListEditor },
   data() {
     return {
       activeTab: 'categories',
       categories: [], products: [], sizes: [],
       forms: {
         category: { name: '' },
-        product: { name: '', price: '', priceCash: '', categoryId: '', description: '', imageUrl: '', published: false, weightKg: '' },
+        product: { name: '', price: '', priceCash: '', categoryId: '', description: '', images: [], published: false, weightKg: '' },
         size: { name: '' },
         user: { username: '', password: '', role: 'USER' }
       },
@@ -448,7 +449,7 @@ export default {
       filters: { productSearch: '', sizeSearch: '' },
       productPage: 1,
       productPageSize: 10,
-      isLoading: false, isProcessing: false, isUploadingImage: false,
+      isLoading: false, isProcessing: false, isUploadingImage: false, loadingEditImages: false,
       errors: {},
       toast: { show: false, type: 'success', message: '' }
     }
@@ -524,27 +525,16 @@ export default {
       if (!this.forms.product.categoryId)   { this.errors.productCategory = 'Seleccione categoría'; return }
       this.isProcessing = true
       try {
-        await addProduct(this.forms.product)
-        this.forms.product = { name: '', price: '', priceCash: '', categoryId: '', description: '', imageUrl: '', published: false, weightKg: '' }
+        const { images, ...product } = this.forms.product
+        const res = await addProduct({ ...product, imageUrl: images[0] || '' })
+        if (images.length) await saveProductImages(res.data.id, images)
+        this.forms.product = { name: '', price: '', priceCash: '', categoryId: '', description: '', images: [], published: false, weightKg: '' }
         await this.fetchProducts()
         this.showToast('success', 'Producto agregado')
       } catch { this.showToast('error', 'Error al agregar') }
       finally { this.isProcessing = false }
     },
 
-    async handleImageUpload(event, target) {
-      const file = event.target.files?.[0]
-      if (!file) return
-      this.isUploadingImage = true
-      try {
-        const res = await uploadImage(file, 'products')
-        target.imageUrl = res.data.url
-      } catch {
-        this.showToast('error', 'Error al subir la imagen')
-      } finally {
-        this.isUploadingImage = false
-      }
-    },
 
     async handleAddSize() {
       if (!this.forms.size.name) { this.errors.sizeName = 'Requerido'; return }
@@ -563,10 +553,22 @@ export default {
       if (type === 'product') {
         this.editingData = {
           name: item.name, price: item.price, priceCash: item.priceCash, categoryId: item.category?.id || '',
-          description: item.description || '', imageUrl: item.imageUrl || '', published: item.published || false, weightKg: item.weightKg || ''
+          description: item.description || '', images: item.imageUrl ? [item.imageUrl] : [], published: item.published || false, weightKg: item.weightKg || ''
         }
+        this.loadEditImages(item.id)
       } else {
         this.editingName = item.name
+      }
+    },
+    async loadEditImages(productId) {
+      this.loadingEditImages = true
+      try {
+        const res = await getProductImages(productId)
+        if (this.editingId === productId && this.editingType === 'product') this.editingData.images = res.data
+      } catch {
+        // Si falla, queda la portada actual y se puede seguir editando.
+      } finally {
+        this.loadingEditImages = false
       }
     },
     cancelEdit() { this.editingId = null; this.editingName = ''; this.editingData = {}; this.errors = {} },
@@ -582,7 +584,9 @@ export default {
           if (!this.editingData.name || !this.editingData.price || this.editingData.priceCash == null || !this.editingData.categoryId) {
             this.showToast('error', 'Complete todos los campos'); return
           }
-          await editProduct({ id, ...this.editingData })
+          const { images, ...product } = this.editingData
+          await editProduct({ id, ...product, imageUrl: images[0] || '' })
+          await saveProductImages(id, images)
           await this.fetchProducts()
         } else if (type === 'size') {
           if (!this.editingName.trim()) { this.errors.editing = 'Requerido'; return }

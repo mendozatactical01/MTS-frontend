@@ -85,15 +85,9 @@
                 </div>
               </div>
               <div class="form-group mb-2">
-                <label for="combo-image">Foto</label>
-                <div class="combo-image-row">
-                  <img v-if="form.imageUrl" :src="form.imageUrl" alt="Foto del combo" class="combo-image-preview" />
-                  <div class="combo-image-actions">
-                    <input id="combo-image" type="file" accept="image/*" class="form-control form-control-sm" :disabled="isProcessing || isUploadingImage" @change="handleImageUpload" />
-                    <span v-if="isUploadingImage" class="combo-image-status"><span class="spinner spinner-sm"></span> Subiendo...</span>
-                    <button v-else-if="form.imageUrl" type="button" class="btn btn-sm btn-secondary" @click="form.imageUrl = ''" :disabled="isProcessing">Quitar foto</button>
-                  </div>
-                </div>
+                <label for="combo-images">Fotos</label>
+                <ImageListEditor v-model="form.images" folder="combos" input-id="combo-images" :disabled="isProcessing"
+                  @uploading="isUploadingImage = $event" @error="showToast('error', $event)" />
               </div>
               <div class="form-check mb-3">
                 <input v-model="form.published" type="checkbox" id="combo-published" class="form-check-input" :disabled="isProcessing" />
@@ -149,17 +143,18 @@
 <script>
 import BaseLayout from '../BaseLayout.vue'
 import { getAllCombos, addCombo, editCombo, deleteCombo } from '../../services/comboService'
-import { getAllProducts, uploadImage } from '../../services/productService'
+import { getAllProducts } from '../../services/productService'
+import ImageListEditor from './ImageListEditor.vue'
 
 export default {
   name: 'Combos',
-  components: { BaseLayout },
+  components: { BaseLayout, ImageListEditor },
   data() {
     return {
       combos: [], products: [],
       isLoading: true, isProcessing: false, isUploadingImage: false,
       modal: { show: false, editing: false, id: null },
-      form: { name: '', description: '', price: '', priceCash: '', imageUrl: '', published: true, items: [] },
+      form: { name: '', description: '', price: '', priceCash: '', images: [], published: true, items: [] },
       errors: {},
       toast: { show: false, type: 'success', message: '' }
     }
@@ -213,28 +208,14 @@ export default {
       slot.search = ''
       this.errors.items = ''
     },
-    async handleImageUpload(event) {
-      const file = event.target.files?.[0]
-      if (!file) return
-      this.isUploadingImage = true
-      try {
-        const res = await uploadImage(file, 'combos')
-        this.form.imageUrl = res.data.url
-      } catch (e) {
-        this.showToast('error', e.response?.data?.message || 'Error al subir la imagen')
-      } finally {
-        this.isUploadingImage = false
-        event.target.value = ''
-      }
-    },
     openCreateModal() {
-      this.form = { name: '', description: '', price: '', priceCash: '', imageUrl: '', published: true, items: [this.newSlot()] }
+      this.form = { name: '', description: '', price: '', priceCash: '', images: [], published: true, items: [this.newSlot()] }
       this.modal = { show: true, editing: false, id: null }
     },
     openEditModal(combo) {
       this.form = {
         name: combo.name, description: combo.description, price: combo.price, priceCash: combo.priceCash ?? '',
-        imageUrl: combo.imageUrl, published: combo.published,
+        images: combo.images?.length ? [...combo.images] : (combo.imageUrl ? [combo.imageUrl] : []), published: combo.published,
         items: combo.items.map(slot => this.newSlot({
           id: slot.id, label: slot.label || '', quantity: slot.quantity,
           options: slot.options.map(o => ({ productId: o.productId, productName: o.productName }))
@@ -317,10 +298,6 @@ export default {
 }
 .combo-search-option:hover, .combo-search-option:focus-visible { background: var(--bg-hover); outline: none; }
 .combo-search-empty { padding: .45rem .75rem; color: var(--text-muted); font-size: .85rem; }
-.combo-image-row { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; }
-.combo-image-preview { width: 72px; height: 72px; object-fit: cover; border-radius: var(--radius); border: 1px solid var(--border); }
-.combo-image-actions { display: flex; flex-direction: column; gap: .4rem; flex: 1; min-width: 180px; }
-.combo-image-status { font-size: .78rem; color: var(--text-muted); display: inline-flex; gap: .4rem; align-items: center; }
 
 @media (max-width: 480px) {
   .tac-toast { left: 1rem; right: 1rem; bottom: 1rem; text-align: center; }
