@@ -73,7 +73,7 @@
               <thead><tr><th scope="col">Ítem</th><th scope="col" class="text-center">Cant.</th><th scope="col" class="text-center">Subtotal</th></tr></thead>
               <tbody>
                 <tr v-for="(item, idx) in detailModal.order?.items" :key="idx">
-                  <td>{{ item.productNameSnapshot }}</td>
+                  <td>{{ item.productNameSnapshot }}<small v-for="(sel, sIdx) in item.selections" :key="sIdx" class="order-choice">{{ sel.quantity }}× {{ sel.label ? sel.label + ': ' : '' }}{{ sel.productNameSnapshot }}<template v-if="sel.sizeNameSnapshot"> — talle {{ sel.sizeNameSnapshot }}</template></small></td>
                   <td class="text-center">{{ item.quantity }}</td>
                   <td class="text-center">${{ formatMoney(item.unitPrice * item.quantity) }}</td>
                 </tr>
@@ -139,3 +139,7 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.order-choice { display: block; font-size: 0.78rem; color: var(--text-secondary); }
+</style>

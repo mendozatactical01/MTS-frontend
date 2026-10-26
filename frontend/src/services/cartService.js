@@ -3,8 +3,17 @@
 // reales se recalculan siempre server-side al crear el pedido (checkoutService).
 const STORAGE_KEY = 'mts_cart'
 
-function itemKey({ type, id, sizeId }) {
-  return `${type}-${id}-${sizeId ?? 'none'}`
+// Dos combos iguales con distintas elecciones (caña, reel, talle) van en líneas separadas.
+function itemKey({ type, id, sizeId, selections }) {
+  const choice = (selections || []).map(s => `${s.comboItemId}:${s.productId}:${s.sizeId ?? ''}`).join('|')
+  return `${type}-${id}-${sizeId ?? 'none'}${choice ? `-${choice}` : ''}`
+}
+
+// Texto corto de lo elegido en un combo, para mostrar en carrito y checkout.
+export function describeSelections(item) {
+  return (item.selections || [])
+    .map(s => `${s.label ? `${s.label}: ` : ''}${s.productName}${s.sizeName ? ` (talle ${s.sizeName})` : ''}`)
+    .join(' · ')
 }
 
 export function getCart() {
@@ -24,7 +33,8 @@ function saveCart(items) {
   return items
 }
 
-// item: { type: 'product'|'combo', id, sizeId, sizeName, name, unitPrice, imageUrl, weightKg }
+// item: { type: 'product'|'combo', id, sizeId, sizeName, name, unitPrice, imageUrl, weightKg,
+//         selections?: [{ comboItemId, productId, sizeId, label, productName, sizeName }] }
 export function addItem(item, quantity = 1) {
   const items = getCart()
   const key = itemKey(item)

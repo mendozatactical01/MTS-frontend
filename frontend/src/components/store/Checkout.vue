@@ -81,7 +81,7 @@
             <h5>Tu pedido</h5>
             <div class="checkout-summary-items">
               <div v-for="item in items" :key="item.key" class="checkout-summary-row">
-                <span>{{ item.quantity }}× {{ item.name }}<span v-if="item.sizeName"> ({{ item.sizeName }})</span></span>
+                <span>{{ item.quantity }}× {{ item.name }}<span v-if="item.sizeName"> ({{ item.sizeName }})</span><small v-if="item.selections?.length" class="checkout-choices">{{ describeSelections(item) }}</small></span>
                 <span>${{ formatMoney(item.unitPrice * item.quantity) }}</span>
               </div>
             </div>
@@ -114,7 +114,7 @@
 
 <script>
 import StoreLayout from './StoreLayout.vue'
-import { getCart, getSubtotal, getTotalWeight, clearCart } from '../../services/cartService'
+import { getCart, getSubtotal, getTotalWeight, clearCart, describeSelections } from '../../services/cartService'
 import { getShippingZones, quoteShipping } from '../../services/storeService'
 import { createOrder } from '../../services/checkoutService'
 
@@ -146,6 +146,7 @@ export default {
     this.zones = res.data
   },
   methods: {
+    describeSelections,
     formatMoney(v) { return Number(v || 0).toLocaleString('es-AR') },
     async handleQuoteShipping() {
       if (!this.form.shippingZoneId) { this.shippingQuote = null; return }
@@ -173,7 +174,8 @@ export default {
             productId: i.type === 'combo' ? null : i.id,
             comboId: i.type === 'combo' ? i.id : null,
             sizeId: i.sizeId,
-            quantity: i.quantity
+            quantity: i.quantity,
+            selections: (i.selections || []).map(s => ({ comboItemId: s.comboItemId, productId: s.productId, sizeId: s.sizeId }))
           }))
         }
         const res = await createOrder(payload)
@@ -194,6 +196,7 @@ export default {
 </script>
 
 <style scoped>
+.checkout-choices { display: block; font-size: 0.75rem; color: var(--text-muted); }
 .back-link { display: inline-block; color: var(--text-secondary); text-decoration: none; margin-bottom: 1rem; font-size: 0.88rem; }
 .back-link:hover { color: var(--crimson-light); }
 h1 { font-size: 1.8rem; margin-bottom: 1.5rem; }

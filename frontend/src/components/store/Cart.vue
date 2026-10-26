@@ -17,6 +17,7 @@
               <h3>{{ item.name }}</h3>
               <span v-if="item.sizeName" class="badge badge-neutral">Talle {{ item.sizeName }}</span>
               <span v-if="item.type === 'combo'" class="badge badge-amber">Combo</span>
+              <p v-if="item.selections?.length" class="cart-row-choices">{{ describeSelections(item) }}</p>
               <p class="cart-row-price">${{ formatMoney(item.unitPrice) }} c/u</p>
             </div>
             <div class="cart-row-qty">
@@ -48,7 +49,7 @@
 
 <script>
 import StoreLayout from './StoreLayout.vue'
-import { getCart, updateQuantity, removeItem, getSubtotal } from '../../services/cartService'
+import { getCart, updateQuantity, removeItem, getSubtotal, describeSelections } from '../../services/cartService'
 
 export default {
   name: 'Cart',
@@ -63,6 +64,7 @@ export default {
     this.refresh()
   },
   methods: {
+    describeSelections,
     refresh() {
       this.items = getCart()
     },
@@ -80,6 +82,7 @@ export default {
 </script>
 
 <style scoped>
+.cart-row-choices { font-size: 0.78rem; color: var(--text-secondary); margin: 0.25rem 0 0; line-height: 1.35; }
 h1 { font-size: 1.8rem; margin-bottom: 1.5rem; }
 
 .cart-layout { display: grid; grid-template-columns: 1fr 320px; gap: 2rem; align-items: start; }

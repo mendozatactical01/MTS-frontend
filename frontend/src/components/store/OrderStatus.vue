@@ -22,7 +22,7 @@
           <div class="tac-card-header"><h5>Ítems</h5></div>
           <div class="tac-card-body">
             <div v-for="(item, idx) in order.items" :key="idx" class="order-item-row">
-              <span>{{ item.quantity }}× {{ item.productNameSnapshot }}</span>
+              <span>{{ item.quantity }}× {{ item.productNameSnapshot }}<small v-for="(sel, sIdx) in item.selections" :key="sIdx" class="order-choice">{{ sel.quantity }}× {{ sel.label ? sel.label + ': ' : '' }}{{ sel.productNameSnapshot }}<template v-if="sel.sizeNameSnapshot"> — talle {{ sel.sizeNameSnapshot }}</template></small></span>
               <span>${{ formatMoney(item.unitPrice * item.quantity) }}</span>
             </div>
             <div class="order-item-row"><span>Subtotal</span><span>${{ formatMoney(order.subtotal) }}</span></div>
@@ -87,6 +87,7 @@ export default {
 </script>
 
 <style scoped>
+.order-choice { display: block; font-size: 0.78rem; color: var(--text-secondary); }
 .narrow { max-width: 700px; }
 
 .status-banner {

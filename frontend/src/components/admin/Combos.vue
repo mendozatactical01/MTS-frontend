@@ -33,7 +33,7 @@
                 <tr v-for="combo in combos" :key="combo.id">
                   <td class="fw-bold">{{ combo.name }}</td>
                   <td style="font-size:0.82rem;color:var(--text-secondary)">
-                    {{ combo.items.map(i => `${i.quantity}× ${i.productName}`).join(', ') }}
+                    {{ combo.items.map(slotSummary).join(', ') }}
                   </td>
                   <td class="text-center">${{ formatMoney(combo.price) }}</td>
                   <td class="text-center">{{ combo.priceCash != null ? '$' + formatMoney(combo.priceCash) : '—' }}</td>
@@ -100,21 +100,32 @@
                 <label for="combo-published" class="form-check-label">Publicado en la tienda</label>
               </div>
 
-              <label id="combo-items-label" for="combo-product-search">Componentes *</label>
-              <div class="combo-search">
-                <input id="combo-product-search" v-model="productSearch" class="form-control form-control-sm" placeholder="Buscar producto para agregar..." autocomplete="off" :disabled="isProcessing" @keydown.enter.prevent="searchResults.length && addComponent(searchResults[0])" />
-                <ul v-if="productSearch.trim()" class="combo-search-results" role="listbox" aria-label="Resultados de búsqueda">
-                  <li v-if="searchResults.length === 0" class="combo-search-empty">Sin resultados</li>
-                  <li v-for="p in searchResults" :key="p.id">
-                    <button type="button" class="combo-search-option" @click="addComponent(p)">{{ p.name }}</button>
-                  </li>
-                </ul>
+              <label id="combo-items-label">Componentes *</label>
+              <p class="combo-help">Si un componente tiene varios productos, el cliente elige uno en la tienda (ej. "Caña": 3 cañas posibles). Si el producto tiene talles, también elige el talle. El precio del combo no cambia.</p>
+              <div v-for="(slot, idx) in form.items" :key="slot.key" class="combo-slot" role="group" :aria-label="`Componente ${idx + 1}`">
+                <div class="combo-slot-head">
+                  <input v-model.trim="slot.label" class="form-control form-control-sm" :placeholder="slot.options.length > 1 ? 'Nombre del componente (ej. Caña) *' : 'Nombre (opcional, ej. Caña)'" :aria-label="`Nombre del componente ${idx + 1}`" :disabled="isProcessing" />
+                  <input v-model.number="slot.quantity" type="number" min="1" class="form-control form-control-sm combo-slot-qty" :aria-label="`Cantidad del componente ${idx + 1}`" title="Unidades por combo" :disabled="isProcessing" />
+                  <button type="button" class="btn btn-sm btn-danger btn-icon" @click="form.items.splice(idx, 1)" :disabled="isProcessing" :aria-label="`Quitar componente ${idx + 1}`">✕</button>
+                </div>
+                <div v-if="slot.options.length" class="combo-options">
+                  <span v-for="(opt, oIdx) in slot.options" :key="opt.productId" class="combo-chip">
+                    {{ opt.productName }}
+                    <button type="button" @click="slot.options.splice(oIdx, 1)" :disabled="isProcessing" :aria-label="`Quitar ${opt.productName}`">✕</button>
+                  </span>
+                </div>
+                <div class="combo-search">
+                  <input v-model="slot.search" class="form-control form-control-sm" :placeholder="slot.options.length ? 'Agregar otra opción...' : 'Buscar producto...'" autocomplete="off" :aria-label="`Buscar producto para el componente ${idx + 1}`" :disabled="isProcessing" @keydown.enter.prevent="searchResults(slot).length && addOption(slot, searchResults(slot)[0])" />
+                  <ul v-if="slot.search && slot.search.trim()" class="combo-search-results" role="listbox" aria-label="Resultados de búsqueda">
+                    <li v-if="searchResults(slot).length === 0" class="combo-search-empty">Sin resultados</li>
+                    <li v-for="p in searchResults(slot)" :key="p.id">
+                      <button type="button" class="combo-search-option" @click="addOption(slot, p)">{{ p.name }}</button>
+                    </li>
+                  </ul>
+                </div>
+                <span class="combo-slot-hint">{{ slot.options.length > 1 ? `El cliente elige 1 de ${slot.options.length}` : slot.options.length === 1 ? 'Producto fijo' : 'Agregá al menos un producto' }}</span>
               </div>
-              <div v-for="(item, idx) in form.items" :key="item.productId" class="combo-item-row" role="group" aria-labelledby="combo-items-label">
-                <span class="combo-item-name">{{ item.productName }}</span>
-                <input v-model.number="item.quantity" type="number" min="1" class="form-control form-control-sm" style="max-width:70px" :aria-label="`Cantidad de ${item.productName}`" :disabled="isProcessing" />
-                <button type="button" class="btn btn-sm btn-danger btn-icon" @click="form.items.splice(idx, 1)" :disabled="isProcessing" :aria-label="`Quitar ${item.productName}`">✕</button>
-              </div>
+              <button type="button" class="btn btn-sm btn-secondary mt-1" @click="addSlot" :disabled="isProcessing">+ Agregar componente</button>
               <span v-if="errors.items" class="invalid-feedback d-block mt-1">{{ errors.items }}</span>
             </div>
             <div class="tac-modal-footer">
@@ -147,7 +158,6 @@ export default {
     return {
       combos: [], products: [],
       isLoading: true, isProcessing: false, isUploadingImage: false,
-      productSearch: '',
       modal: { show: false, editing: false, id: null },
       form: { name: '', description: '', price: '', priceCash: '', imageUrl: '', published: true, items: [] },
       errors: {},
@@ -158,12 +168,8 @@ export default {
     canSave() {
       return this.form.name && this.form.price !== '' && this.form.price >= 0 &&
         this.form.priceCash !== '' && this.form.priceCash >= 0 && this.form.items.length > 0 &&
-        this.form.items.every(i => i.productId && i.quantity >= 1) && !this.isUploadingImage
-    },
-    searchResults() {
-      const q = this.productSearch.trim().toLowerCase()
-      if (!q) return []
-      return this.products.filter(p => p.name.toLowerCase().includes(q)).slice(0, 8)
+        this.form.items.every(s => s.options.length > 0 && s.quantity >= 1 && (s.options.length === 1 || s.label)) &&
+        !this.isUploadingImage
     }
   },
   async mounted() {
@@ -185,11 +191,26 @@ export default {
   methods: {
     handleEsc(e) { if (e.key === 'Escape' && this.modal.show) this.closeModal() },
     formatMoney(v) { return Number(v || 0).toLocaleString('es-AR') },
-    addComponent(product) {
-      const existing = this.form.items.find(i => i.productId === product.id)
-      if (existing) existing.quantity++
-      else this.form.items.push({ productId: product.id, productName: product.name, quantity: 1 })
-      this.productSearch = ''
+    slotSummary(slot) {
+      const name = slot.label || slot.options[0]?.productName || '—'
+      return `${slot.quantity}× ${name}${slot.options.length > 1 ? ` (${slot.options.length} opciones)` : ''}`
+    },
+    newSlot(data = {}) {
+      return { key: Math.random().toString(36).slice(2), id: null, label: '', quantity: 1, options: [], search: '', ...data }
+    },
+    addSlot() {
+      this.form.items.push(this.newSlot())
+    },
+    searchResults(slot) {
+      const q = (slot.search || '').trim().toLowerCase()
+      if (!q) return []
+      return this.products
+        .filter(p => p.name.toLowerCase().includes(q) && !slot.options.some(o => o.productId === p.id))
+        .slice(0, 8)
+    },
+    addOption(slot, product) {
+      slot.options.push({ productId: product.id, productName: product.name })
+      slot.search = ''
       this.errors.items = ''
     },
     async handleImageUpload(event) {
@@ -207,22 +228,35 @@ export default {
       }
     },
     openCreateModal() {
-      this.productSearch = ''
-      this.form = { name: '', description: '', price: '', priceCash: '', imageUrl: '', published: true, items: [] }
+      this.form = { name: '', description: '', price: '', priceCash: '', imageUrl: '', published: true, items: [this.newSlot()] }
       this.modal = { show: true, editing: false, id: null }
     },
     openEditModal(combo) {
-      this.productSearch = ''
-      this.form = { name: combo.name, description: combo.description, price: combo.price, priceCash: combo.priceCash ?? '', imageUrl: combo.imageUrl, published: combo.published, items: combo.items.map(i => ({ ...i })) }
+      this.form = {
+        name: combo.name, description: combo.description, price: combo.price, priceCash: combo.priceCash ?? '',
+        imageUrl: combo.imageUrl, published: combo.published,
+        items: combo.items.map(slot => this.newSlot({
+          id: slot.id, label: slot.label || '', quantity: slot.quantity,
+          options: slot.options.map(o => ({ productId: o.productId, productName: o.productName }))
+        }))
+      }
       this.modal = { show: true, editing: true, id: combo.id }
     },
     closeModal() { if (!this.isProcessing) this.modal.show = false },
     async handleSave() {
       this.errors = {}
       if (this.form.items.length === 0) { this.errors.items = 'Agregá al menos un componente'; return }
+      if (this.form.items.some(s => s.options.length > 1 && !s.label)) { this.errors.items = 'Poné un nombre a los componentes con varias opciones'; return }
       this.isProcessing = true
       try {
-        const payload = { ...this.form, id: this.modal.id }
+        const payload = {
+          ...this.form,
+          id: this.modal.id,
+          items: this.form.items.map(s => ({
+            id: s.id, label: s.label || null, quantity: s.quantity,
+            options: s.options.map(o => ({ productId: o.productId }))
+          }))
+        }
         if (this.modal.editing) {
           await editCombo(payload)
           this.showToast('success', 'Combo actualizado')
@@ -257,9 +291,20 @@ export default {
 </script>
 
 <style scoped>
-.combo-item-row { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center; flex-wrap: wrap; }
-.combo-item-name { flex: 1; min-width: 140px; font-size: .88rem; }
-.combo-search { position: relative; margin-bottom: .75rem; }
+.combo-help { font-size: .78rem; color: var(--text-muted); margin-bottom: .6rem; }
+.combo-slot { border: 1px solid var(--border); border-radius: var(--radius); padding: .65rem; margin-bottom: .6rem; background: var(--bg-surface); }
+.combo-slot-head { display: flex; gap: .5rem; align-items: center; }
+.combo-slot-head .form-control:first-child { flex: 1; min-width: 0; }
+.combo-slot-qty { max-width: 70px; }
+.combo-options { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .5rem; }
+.combo-chip {
+  display: inline-flex; align-items: center; gap: .35rem; padding: .2rem .25rem .2rem .55rem;
+  background: var(--bg-hover); border: 1px solid var(--border); border-radius: 999px; font-size: .8rem;
+}
+.combo-chip button { background: none; border: 0; color: var(--text-muted); padding: 0 .3rem; line-height: 1; cursor: pointer; }
+.combo-chip button:hover { color: var(--red); }
+.combo-slot-hint { display: block; margin-top: .35rem; font-size: .74rem; color: var(--text-muted); }
+.combo-search { position: relative; margin-top: .5rem; }
 .combo-search-results {
   list-style: none; margin: .25rem 0 0; padding: .25rem 0;
   max-height: 260px; overflow-y: auto;
