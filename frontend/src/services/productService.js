@@ -22,7 +22,7 @@ export function getProductById(id) {
 
 // Etapa A: sin Cloudinary todavía, se simula devolviendo un data URL local
 // para poder previsualizar/guardar la imagen en el mock de productos.
-const USE_MOCK_UPLOAD = true
+const USE_MOCK_UPLOAD = false
 
 export function uploadImage(file, folder = 'products') {
   if (USE_MOCK_UPLOAD) {

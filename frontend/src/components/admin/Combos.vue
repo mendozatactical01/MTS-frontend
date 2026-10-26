@@ -23,7 +23,8 @@
                 <tr>
                   <th scope="col">Nombre</th>
                   <th scope="col">Componentes</th>
-                  <th scope="col" class="text-center">Precio</th>
+                  <th scope="col" class="text-center">Tarjeta</th>
+                  <th scope="col" class="text-center">Efectivo / transf.</th>
                   <th scope="col" class="text-center">Publicado</th>
                   <th scope="col" class="text-center" style="width:110px">Acciones</th>
                 </tr>
@@ -35,6 +36,7 @@
                     {{ combo.items.map(i => `${i.quantity}× ${i.productName}`).join(', ') }}
                   </td>
                   <td class="text-center">${{ formatMoney(combo.price) }}</td>
+                  <td class="text-center">{{ combo.priceCash != null ? '$' + formatMoney(combo.priceCash) : '—' }}</td>
                   <td class="text-center">
                     <span class="badge" :class="combo.published ? 'badge-green' : 'badge-neutral'">
                       {{ combo.published ? 'Sí' : 'No' }}
@@ -71,14 +73,25 @@
               <div class="row g-2 mb-2">
                 <div class="col-6">
                   <div class="form-group">
-                    <label for="combo-price">Precio *</label>
-                    <input id="combo-price" v-model.number="form.price" type="number" min="0" class="form-control" required :disabled="isProcessing" />
+                    <label for="combo-price">Precio tarjeta *</label>
+                    <input id="combo-price" v-model.number="form.price" type="number" min="0" step="0.01" class="form-control" required :disabled="isProcessing" />
                   </div>
                 </div>
                 <div class="col-6">
                   <div class="form-group">
-                    <label for="combo-image-url">URL de imagen</label>
-                    <input id="combo-image-url" v-model.trim="form.imageUrl" class="form-control" placeholder="https://..." :disabled="isProcessing" />
+                    <label for="combo-price-cash">Precio efectivo / transf. *</label>
+                    <input id="combo-price-cash" v-model.number="form.priceCash" type="number" min="0" step="0.01" class="form-control" required :disabled="isProcessing" />
+                  </div>
+                </div>
+              </div>
+              <div class="form-group mb-2">
+                <label for="combo-image">Foto</label>
+                <div class="combo-image-row">
+                  <img v-if="form.imageUrl" :src="form.imageUrl" alt="Foto del combo" class="combo-image-preview" />
+                  <div class="combo-image-actions">
+                    <input id="combo-image" type="file" accept="image/*" class="form-control form-control-sm" :disabled="isProcessing || isUploadingImage" @change="handleImageUpload" />
+                    <span v-if="isUploadingImage" class="combo-image-status"><span class="spinner spinner-sm"></span> Subiendo...</span>
+                    <button v-else-if="form.imageUrl" type="button" class="btn btn-sm btn-secondary" @click="form.imageUrl = ''" :disabled="isProcessing">Quitar foto</button>
                   </div>
                 </div>
               </div>
@@ -87,18 +100,21 @@
                 <label for="combo-published" class="form-check-label">Publicado en la tienda</label>
               </div>
 
-              <label id="combo-items-label">Componentes *</label>
-              <div v-for="(item, idx) in form.items" :key="idx" class="combo-item-row" role="group" aria-labelledby="combo-items-label">
-                <select v-model.number="item.productId" class="form-select form-select-sm" aria-label="Producto del combo" :disabled="isProcessing" @change="item.productName = productName(item.productId)">
-                  <option value="" disabled>Producto</option>
-                  <option v-for="p in products" :key="p.id" :value="p.id">{{ p.name }}</option>
-                </select>
-                <input v-model.number="item.quantity" type="number" min="1" class="form-control form-control-sm" style="max-width:70px" aria-label="Cantidad" :disabled="isProcessing" />
-                <button type="button" class="btn btn-sm btn-danger btn-icon" @click="form.items.splice(idx, 1)" :disabled="isProcessing" aria-label="Quitar componente">✕</button>
+              <label id="combo-items-label" for="combo-product-search">Componentes *</label>
+              <div class="combo-search">
+                <input id="combo-product-search" v-model="productSearch" class="form-control form-control-sm" placeholder="Buscar producto para agregar..." autocomplete="off" :disabled="isProcessing" @keydown.enter.prevent="searchResults.length && addComponent(searchResults[0])" />
+                <ul v-if="productSearch.trim()" class="combo-search-results" role="listbox" aria-label="Resultados de búsqueda">
+                  <li v-if="searchResults.length === 0" class="combo-search-empty">Sin resultados</li>
+                  <li v-for="p in searchResults" :key="p.id">
+                    <button type="button" class="combo-search-option" @click="addComponent(p)">{{ p.name }}</button>
+                  </li>
+                </ul>
               </div>
-              <button type="button" class="btn btn-sm btn-secondary mt-1" @click="form.items.push({ productId: '', productName: '', quantity: 1 })" :disabled="isProcessing">
-                + Agregar componente
-              </button>
+              <div v-for="(item, idx) in form.items" :key="item.productId" class="combo-item-row" role="group" aria-labelledby="combo-items-label">
+                <span class="combo-item-name">{{ item.productName }}</span>
+                <input v-model.number="item.quantity" type="number" min="1" class="form-control form-control-sm" style="max-width:70px" :aria-label="`Cantidad de ${item.productName}`" :disabled="isProcessing" />
+                <button type="button" class="btn btn-sm btn-danger btn-icon" @click="form.items.splice(idx, 1)" :disabled="isProcessing" :aria-label="`Quitar ${item.productName}`">✕</button>
+              </div>
               <span v-if="errors.items" class="invalid-feedback d-block mt-1">{{ errors.items }}</span>
             </div>
             <div class="tac-modal-footer">
@@ -122,7 +138,7 @@
 <script>
 import BaseLayout from '../BaseLayout.vue'
 import { getAllCombos, addCombo, editCombo, deleteCombo } from '../../services/comboService'
-import { getAllProducts } from '../../services/productService'
+import { getAllProducts, uploadImage } from '../../services/productService'
 
 export default {
   name: 'Combos',
@@ -130,17 +146,24 @@ export default {
   data() {
     return {
       combos: [], products: [],
-      isLoading: true, isProcessing: false,
+      isLoading: true, isProcessing: false, isUploadingImage: false,
+      productSearch: '',
       modal: { show: false, editing: false, id: null },
-      form: { name: '', description: '', price: '', imageUrl: '', published: true, items: [] },
+      form: { name: '', description: '', price: '', priceCash: '', imageUrl: '', published: true, items: [] },
       errors: {},
       toast: { show: false, type: 'success', message: '' }
     }
   },
   computed: {
     canSave() {
-      return this.form.name && this.form.price >= 0 && this.form.items.length > 0 &&
-        this.form.items.every(i => i.productId && i.quantity >= 1)
+      return this.form.name && this.form.price !== '' && this.form.price >= 0 &&
+        this.form.priceCash !== '' && this.form.priceCash >= 0 && this.form.items.length > 0 &&
+        this.form.items.every(i => i.productId && i.quantity >= 1) && !this.isUploadingImage
+    },
+    searchResults() {
+      const q = this.productSearch.trim().toLowerCase()
+      if (!q) return []
+      return this.products.filter(p => p.name.toLowerCase().includes(q)).slice(0, 8)
     }
   },
   async mounted() {
@@ -162,13 +185,35 @@ export default {
   methods: {
     handleEsc(e) { if (e.key === 'Escape' && this.modal.show) this.closeModal() },
     formatMoney(v) { return Number(v || 0).toLocaleString('es-AR') },
-    productName(id) { return this.products.find(p => p.id === id)?.name || '' },
+    addComponent(product) {
+      const existing = this.form.items.find(i => i.productId === product.id)
+      if (existing) existing.quantity++
+      else this.form.items.push({ productId: product.id, productName: product.name, quantity: 1 })
+      this.productSearch = ''
+      this.errors.items = ''
+    },
+    async handleImageUpload(event) {
+      const file = event.target.files?.[0]
+      if (!file) return
+      this.isUploadingImage = true
+      try {
+        const res = await uploadImage(file, 'combos')
+        this.form.imageUrl = res.data.url
+      } catch (e) {
+        this.showToast('error', e.response?.data?.message || 'Error al subir la imagen')
+      } finally {
+        this.isUploadingImage = false
+        event.target.value = ''
+      }
+    },
     openCreateModal() {
-      this.form = { name: '', description: '', price: '', imageUrl: '', published: true, items: [] }
+      this.productSearch = ''
+      this.form = { name: '', description: '', price: '', priceCash: '', imageUrl: '', published: true, items: [] }
       this.modal = { show: true, editing: false, id: null }
     },
     openEditModal(combo) {
-      this.form = { name: combo.name, description: combo.description, price: combo.price, imageUrl: combo.imageUrl, published: combo.published, items: combo.items.map(i => ({ ...i })) }
+      this.productSearch = ''
+      this.form = { name: combo.name, description: combo.description, price: combo.price, priceCash: combo.priceCash ?? '', imageUrl: combo.imageUrl, published: combo.published, items: combo.items.map(i => ({ ...i })) }
       this.modal = { show: true, editing: true, id: combo.id }
     },
     closeModal() { if (!this.isProcessing) this.modal.show = false },
@@ -213,7 +258,24 @@ export default {
 
 <style scoped>
 .combo-item-row { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center; flex-wrap: wrap; }
-.combo-item-row .form-select { flex: 1; min-width: 140px; }
+.combo-item-name { flex: 1; min-width: 140px; font-size: .88rem; }
+.combo-search { position: relative; margin-bottom: .75rem; }
+.combo-search-results {
+  list-style: none; margin: .25rem 0 0; padding: .25rem 0;
+  max-height: 260px; overflow-y: auto;
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.combo-search-option {
+  display: block; width: 100%;
+  padding: .45rem .75rem; background: none; border: 0; color: inherit; text-align: left; font-size: .85rem;
+}
+.combo-search-option:hover, .combo-search-option:focus-visible { background: var(--bg-hover); outline: none; }
+.combo-search-empty { padding: .45rem .75rem; color: var(--text-muted); font-size: .85rem; }
+.combo-image-row { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; }
+.combo-image-preview { width: 72px; height: 72px; object-fit: cover; border-radius: var(--radius); border: 1px solid var(--border); }
+.combo-image-actions { display: flex; flex-direction: column; gap: .4rem; flex: 1; min-width: 180px; }
+.combo-image-status { font-size: .78rem; color: var(--text-muted); display: inline-flex; gap: .4rem; align-items: center; }
 
 @media (max-width: 480px) {
   .tac-toast { left: 1rem; right: 1rem; bottom: 1rem; text-align: center; }

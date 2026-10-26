@@ -17,7 +17,13 @@
 
         <div class="detail-info">
           <h1>{{ combo.name }}</h1>
-          <p class="detail-price">${{ formatMoney(combo.price) }}</p>
+          <p class="detail-price">
+            <template v-if="combo.priceCash != null">
+              ${{ formatMoney(combo.priceCash) }} <span class="price-strike">${{ formatMoney(combo.price) }}</span>
+              <span class="detail-price-note">(precio efectivo/transferencia)</span>
+            </template>
+            <template v-else>${{ formatMoney(combo.price) }}</template>
+          </p>
           <p class="detail-description">{{ combo.description }}</p>
 
           <div class="combo-items">
@@ -85,7 +91,7 @@ export default {
         sizeId: null,
         sizeName: null,
         name: this.combo.name,
-        unitPrice: this.combo.price,
+        unitPrice: this.combo.priceCash ?? this.combo.price,
         imageUrl: this.combo.imageUrl,
         weightKg: 0
       }, this.quantity)
@@ -108,6 +114,7 @@ export default {
 .detail-tag { position: absolute; top: 0.75rem; left: 0.75rem; }
 .detail-info h1 { font-size: 1.8rem; margin-bottom: 0.75rem; }
 .detail-price { font-family: var(--font-display); font-weight: 700; font-size: 1.6rem; margin-bottom: 1rem; }
+.detail-price-note { display: block; font-family: var(--font-body); font-weight: 400; font-size: 0.78rem; color: var(--text-muted); }
 .detail-description { color: var(--text-secondary); margin-bottom: 1.5rem; line-height: 1.6; }
 
 .combo-items { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
