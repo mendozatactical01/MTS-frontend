@@ -94,32 +94,57 @@
                 <label for="combo-published" class="form-check-label">Publicado en la tienda</label>
               </div>
 
-              <label id="combo-items-label">Componentes *</label>
-              <p class="combo-help">Si un componente tiene varios productos, el cliente elige uno en la tienda (ej. "Caña": 3 cañas posibles). Si el producto tiene talles, también elige el talle. El precio del combo no cambia.</p>
-              <div v-for="(slot, idx) in form.items" :key="slot.key" class="combo-slot" role="group" :aria-label="`Componente ${idx + 1}`">
-                <div class="combo-slot-head">
-                  <input v-model.trim="slot.label" class="form-control form-control-sm" :placeholder="slot.options.length > 1 ? 'Nombre del componente (ej. Caña) *' : 'Nombre (opcional, ej. Caña)'" :aria-label="`Nombre del componente ${idx + 1}`" :disabled="isProcessing" />
-                  <input v-model.number="slot.quantity" type="number" min="1" class="form-control form-control-sm combo-slot-qty" :aria-label="`Cantidad del componente ${idx + 1}`" title="Unidades por combo" :disabled="isProcessing" />
-                  <button type="button" class="btn btn-sm btn-danger btn-icon" @click="form.items.splice(idx, 1)" :disabled="isProcessing" :aria-label="`Quitar componente ${idx + 1}`">✕</button>
-                </div>
-                <div v-if="slot.options.length" class="combo-options">
-                  <span v-for="(opt, oIdx) in slot.options" :key="opt.productId" class="combo-chip">
-                    {{ opt.productName }}
-                    <button type="button" @click="slot.options.splice(oIdx, 1)" :disabled="isProcessing" :aria-label="`Quitar ${opt.productName}`">✕</button>
-                  </span>
+              <!-- Productos fijos: van siempre en el combo -->
+              <div class="combo-section" role="group" aria-labelledby="combo-fixed-label">
+                <label id="combo-fixed-label">Productos fijos</label>
+                <p class="combo-help">Van siempre en el combo (ej. la caña).</p>
+                <div v-for="slot in fixedSlots" :key="slot.key" class="combo-fixed-row">
+                  <span class="combo-fixed-name">{{ slot.options[0]?.productName }}</span>
+                  <input v-model.number="slot.quantity" type="number" min="1" class="form-control form-control-sm combo-slot-qty" :aria-label="`Cantidad de ${slot.options[0]?.productName}`" title="Unidades por combo" :disabled="isProcessing" />
+                  <button type="button" class="btn btn-sm btn-danger btn-icon" @click="removeSlot(slot)" :disabled="isProcessing" :aria-label="`Quitar ${slot.options[0]?.productName}`">✕</button>
                 </div>
                 <div class="combo-search">
-                  <input v-model="slot.search" class="form-control form-control-sm" :placeholder="slot.options.length ? 'Agregar otra opción...' : 'Buscar producto...'" autocomplete="off" :aria-label="`Buscar producto para el componente ${idx + 1}`" :disabled="isProcessing" @keydown.enter.prevent="searchResults(slot).length && addOption(slot, searchResults(slot)[0])" />
-                  <ul v-if="slot.search && slot.search.trim()" class="combo-search-results" role="listbox" aria-label="Resultados de búsqueda">
-                    <li v-if="searchResults(slot).length === 0" class="combo-search-empty">Sin resultados</li>
-                    <li v-for="p in searchResults(slot)" :key="p.id">
-                      <button type="button" class="combo-search-option" @click="addOption(slot, p)">{{ p.name }}</button>
+                  <input v-model="fixedSearch" class="form-control form-control-sm" placeholder="Buscar producto para agregar como fijo..." autocomplete="off" aria-label="Buscar producto fijo" :disabled="isProcessing"
+                    @keydown.enter.prevent="fixedResults.length && addFixed(fixedResults[0])" />
+                  <ul v-if="fixedSearch.trim()" class="combo-search-results" role="listbox" aria-label="Resultados de búsqueda">
+                    <li v-if="fixedResults.length === 0" class="combo-search-empty">Sin resultados</li>
+                    <li v-for="p in fixedResults" :key="p.id">
+                      <button type="button" class="combo-search-option" @click="addFixed(p)">{{ p.name }}</button>
                     </li>
                   </ul>
                 </div>
-                <span class="combo-slot-hint">{{ slot.options.length > 1 ? `El cliente elige 1 de ${slot.options.length}` : slot.options.length === 1 ? 'Producto fijo' : 'Agregá al menos un producto' }}</span>
               </div>
-              <button type="button" class="btn btn-sm btn-secondary mt-1" @click="addSlot" :disabled="isProcessing">+ Agregar componente</button>
+
+              <!-- Para elegir: el cliente elige una opción de cada grupo -->
+              <div class="combo-section" role="group" aria-labelledby="combo-choice-label">
+                <label id="combo-choice-label">Para elegir</label>
+                <p class="combo-help">El cliente elige una opción de cada grupo en la tienda (ej. grupo "Reel" con los colores). Si el producto tiene talles, también elige el talle. El precio del combo no cambia.</p>
+                <div v-for="(slot, idx) in choiceSlots" :key="slot.key" class="combo-slot" role="group" :aria-label="`Grupo para elegir ${idx + 1}`">
+                  <div class="combo-slot-head">
+                    <input v-model.trim="slot.label" class="form-control form-control-sm" placeholder="Nombre del grupo (ej. Reel) *" :aria-label="`Nombre del grupo ${idx + 1}`" :disabled="isProcessing" />
+                    <input v-model.number="slot.quantity" type="number" min="1" class="form-control form-control-sm combo-slot-qty" :aria-label="`Cantidad del grupo ${idx + 1}`" title="Unidades por combo" :disabled="isProcessing" />
+                    <button type="button" class="btn btn-sm btn-danger btn-icon" @click="removeSlot(slot)" :disabled="isProcessing" :aria-label="`Quitar grupo ${idx + 1}`">✕</button>
+                  </div>
+                  <div v-if="slot.options.length" class="combo-options">
+                    <span v-for="(opt, oIdx) in slot.options" :key="opt.productId" class="combo-chip">
+                      {{ opt.productName }}
+                      <button type="button" class="combo-chip-fix" @click="moveToFixed(slot, oIdx)" :disabled="isProcessing" :aria-label="`Pasar ${opt.productName} a productos fijos`" title="Pasar a productos fijos">Pasar a fijos</button>
+                      <button type="button" @click="slot.options.splice(oIdx, 1)" :disabled="isProcessing" :aria-label="`Quitar ${opt.productName}`">✕</button>
+                    </span>
+                  </div>
+                  <div class="combo-search">
+                    <input v-model="slot.search" class="form-control form-control-sm" :placeholder="slot.options.length ? 'Agregar otra opción...' : 'Buscar producto...'" autocomplete="off" :aria-label="`Buscar opción para el grupo ${idx + 1}`" :disabled="isProcessing" @keydown.enter.prevent="searchResults(slot).length && addOption(slot, searchResults(slot)[0])" />
+                    <ul v-if="slot.search && slot.search.trim()" class="combo-search-results" role="listbox" aria-label="Resultados de búsqueda">
+                      <li v-if="searchResults(slot).length === 0" class="combo-search-empty">Sin resultados</li>
+                      <li v-for="p in searchResults(slot)" :key="p.id">
+                        <button type="button" class="combo-search-option" @click="addOption(slot, p)">{{ p.name }}</button>
+                      </li>
+                    </ul>
+                  </div>
+                  <span class="combo-slot-hint">{{ slot.options.length >= 2 ? `El cliente elige 1 de ${slot.options.length}` : 'Agregá al menos 2 opciones' }}</span>
+                </div>
+                <button type="button" class="btn btn-sm btn-secondary mt-1" @click="addChoiceSlot" :disabled="isProcessing">+ Agregar grupo para elegir</button>
+              </div>
               <span v-if="errors.items" class="invalid-feedback d-block mt-1">{{ errors.items }}</span>
             </div>
             <div class="tac-modal-footer">
@@ -155,15 +180,24 @@ export default {
       isLoading: true, isProcessing: false, isUploadingImage: false,
       modal: { show: false, editing: false, id: null },
       form: { name: '', description: '', price: '', priceCash: '', images: [], published: true, items: [] },
+      fixedSearch: '',
       errors: {},
       toast: { show: false, type: 'success', message: '' }
     }
   },
   computed: {
+    fixedSlots() { return this.form.items.filter(s => s.kind === 'fixed') },
+    choiceSlots() { return this.form.items.filter(s => s.kind === 'choice') },
+    fixedResults() {
+      const q = this.fixedSearch.trim().toLowerCase()
+      if (!q) return []
+      const used = new Set(this.fixedSlots.map(s => s.options[0]?.productId))
+      return this.products.filter(p => p.name.toLowerCase().includes(q) && !used.has(p.id)).slice(0, 8)
+    },
     canSave() {
       return this.form.name && this.form.price !== '' && this.form.price >= 0 &&
         this.form.priceCash !== '' && this.form.priceCash >= 0 && this.form.items.length > 0 &&
-        this.form.items.every(s => s.options.length > 0 && s.quantity >= 1 && (s.options.length === 1 || s.label)) &&
+        this.form.items.every(s => s.quantity >= 1 && s.options.length > 0) &&
         !this.isUploadingImage
     }
   },
@@ -190,11 +224,27 @@ export default {
       const name = slot.label || slot.options[0]?.productName || '—'
       return `${slot.quantity}× ${name}${slot.options.length > 1 ? ` (${slot.options.length} opciones)` : ''}`
     },
+    // kind es solo de esta pantalla: 'fixed' = un producto que va siempre, 'choice' = grupo donde el cliente elige.
+    // Para el backend los dos son componentes del combo (uno fijo es un componente con una sola opción).
     newSlot(data = {}) {
-      return { key: Math.random().toString(36).slice(2), id: null, label: '', quantity: 1, options: [], search: '', ...data }
+      return { key: Math.random().toString(36).slice(2), id: null, kind: 'choice', label: '', quantity: 1, options: [], search: '', ...data }
     },
-    addSlot() {
+    addChoiceSlot() {
       this.form.items.push(this.newSlot())
+    },
+    addFixed(product) {
+      this.form.items.push(this.newSlot({ kind: 'fixed', options: [{ productId: product.id, productName: product.name }] }))
+      this.fixedSearch = ''
+      this.errors.items = ''
+    },
+    moveToFixed(slot, optionIdx) {
+      const [opt] = slot.options.splice(optionIdx, 1)
+      if (!this.fixedSlots.some(s => s.options[0]?.productId === opt.productId)) {
+        this.form.items.push(this.newSlot({ kind: 'fixed', quantity: slot.quantity, options: [opt] }))
+      }
+    },
+    removeSlot(slot) {
+      this.form.items = this.form.items.filter(s => s.key !== slot.key)
     },
     searchResults(slot) {
       const q = (slot.search || '').trim().toLowerCase()
@@ -209,7 +259,9 @@ export default {
       this.errors.items = ''
     },
     openCreateModal() {
-      this.form = { name: '', description: '', price: '', priceCash: '', images: [], published: true, items: [this.newSlot()] }
+      this.form = { name: '', description: '', price: '', priceCash: '', images: [], published: true, items: [] }
+      this.fixedSearch = ''
+      this.errors = {}
       this.modal = { show: true, editing: false, id: null }
     },
     openEditModal(combo) {
@@ -217,23 +269,27 @@ export default {
         name: combo.name, description: combo.description, price: combo.price, priceCash: combo.priceCash ?? '',
         images: combo.images?.length ? [...combo.images] : (combo.imageUrl ? [combo.imageUrl] : []), published: combo.published,
         items: combo.items.map(slot => this.newSlot({
-          id: slot.id, label: slot.label || '', quantity: slot.quantity,
+          id: slot.id, kind: slot.options.length > 1 ? 'choice' : 'fixed', label: slot.label || '', quantity: slot.quantity,
           options: slot.options.map(o => ({ productId: o.productId, productName: o.productName }))
         }))
       }
+      this.fixedSearch = ''
+      this.errors = {}
       this.modal = { show: true, editing: true, id: combo.id }
     },
     closeModal() { if (!this.isProcessing) this.modal.show = false },
     async handleSave() {
       this.errors = {}
-      if (this.form.items.length === 0) { this.errors.items = 'Agregá al menos un componente'; return }
-      if (this.form.items.some(s => s.options.length > 1 && !s.label)) { this.errors.items = 'Poné un nombre a los componentes con varias opciones'; return }
+      if (this.form.items.length === 0) { this.errors.items = 'Agregá al menos un producto fijo o un grupo para elegir'; return }
+      if (this.choiceSlots.some(s => !s.label)) { this.errors.items = 'Poné un nombre a cada grupo para elegir (ej. Reel)'; return }
+      if (this.choiceSlots.some(s => s.options.length < 2)) { this.errors.items = 'Cada grupo para elegir necesita al menos 2 opciones (si es uno solo, agregalo como fijo)'; return }
       this.isProcessing = true
       try {
         const payload = {
           ...this.form,
           id: this.modal.id,
-          items: this.form.items.map(s => ({
+          // Primero los fijos y después los grupos, así se muestran en ese orden en la tienda.
+          items: [...this.fixedSlots, ...this.choiceSlots].map(s => ({
             id: s.id, label: s.label || null, quantity: s.quantity,
             options: s.options.map(o => ({ productId: o.productId }))
           }))
@@ -272,6 +328,15 @@ export default {
 </script>
 
 <style scoped>
+.combo-section { margin-bottom: 1rem; }
+.combo-section > label { display: block; }
+.combo-fixed-row {
+  display: flex; gap: .5rem; align-items: center; padding: .4rem .5rem; margin-bottom: .4rem;
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-surface);
+}
+.combo-fixed-name { flex: 1; min-width: 0; font-size: .88rem; }
+.combo-chip button.combo-chip-fix { font-size: .7rem; text-decoration: underline; }
+.combo-chip button.combo-chip-fix:hover { color: var(--text-primary); }
 .combo-help { font-size: .78rem; color: var(--text-muted); margin-bottom: .6rem; }
 .combo-slot { border: 1px solid var(--border); border-radius: var(--radius); padding: .65rem; margin-bottom: .6rem; background: var(--bg-surface); }
 .combo-slot-head { display: flex; gap: .5rem; align-items: center; }

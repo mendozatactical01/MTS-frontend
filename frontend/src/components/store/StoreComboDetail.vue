@@ -28,7 +28,7 @@
 
           <div class="combo-items">
             <h4>Incluye</h4>
-            <div v-for="slot in combo.items" :key="slot.id" class="combo-slot">
+            <div v-for="slot in orderedItems" :key="slot.id" class="combo-slot">
               <p class="combo-slot-title">
                 {{ slot.quantity }}× {{ slotTitle(slot) }}
                 <span v-if="slot.options.length === 1 && slot.label" class="combo-slot-fixed">— {{ slot.options[0].productName }}</span>
@@ -94,6 +94,13 @@ export default {
   data() {
     // selections: { [comboItemId]: { productId, sizeId } }
     return { combo: null, loading: true, quantity: 1, added: false, selections: {}, selectionError: '' }
+  },
+  computed: {
+    // Primero lo que va fijo, después lo que el cliente elige.
+    orderedItems() {
+      const items = this.combo?.items || []
+      return [...items.filter(s => s.options.length <= 1), ...items.filter(s => s.options.length > 1)]
+    }
   },
   async mounted() {
     await this.load()
