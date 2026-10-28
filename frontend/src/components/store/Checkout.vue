@@ -18,21 +18,35 @@
               <div class="form-row">
                 <div class="form-group">
                   <label for="f-name">Nombre y apellido</label>
-                  <input id="f-name" v-model.trim="form.customerName" class="form-control" autocomplete="name" required :disabled="submitting" />
+                  <input id="f-name" v-model.trim="form.customerName" class="form-control" autocomplete="name" required maxlength="80"
+                    pattern="\p{L}[\p{L}'.\-]*( +\p{L}[\p{L}'.\-]*)+" title="Nombre y apellido, solo letras" :disabled="submitting" />
                 </div>
                 <div class="form-group">
                   <label for="f-dni">DNI</label>
-                  <input id="f-dni" v-model.trim="form.customerDni" class="form-control" inputmode="numeric" autocomplete="off" required :disabled="submitting" />
+                  <input id="f-dni" :value="form.customerDni" @input="onlyDigits($event, 'customerDni', 8)" class="form-control" inputmode="numeric"
+                    autocomplete="off" required minlength="7" maxlength="8" pattern="[0-9]{7,8}" title="7 u 8 números, sin puntos"
+                    placeholder="Sin puntos" :disabled="submitting" />
                 </div>
               </div>
               <div class="form-row">
                 <div class="form-group">
                   <label for="f-email">Email</label>
-                  <input id="f-email" v-model.trim="form.customerEmail" type="email" class="form-control" autocomplete="email" required :disabled="submitting" />
+                  <input id="f-email" v-model.trim="form.customerEmail" type="email" class="form-control" autocomplete="email" required maxlength="120"
+                    pattern="[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}" title="Ejemplo: nombre@gmail.com" :disabled="submitting" />
                 </div>
                 <div class="form-group">
+                  <label for="f-email2">Repetir email</label>
+                  <input id="f-email2" v-model.trim="form.customerEmailConfirmation" type="email" class="form-control" autocomplete="off" required maxlength="120"
+                    :aria-invalid="emailMismatch" aria-describedby="f-email2-help" :disabled="submitting" @paste.prevent />
+                  <small v-if="emailMismatch" id="f-email2-help" class="invalid-feedback d-block">Los emails no coinciden</small>
+                  <small v-else id="f-email2-help" class="form-hint">Ahí te mandamos la confirmación del pedido</small>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
                   <label for="f-phone">Teléfono</label>
-                  <input id="f-phone" v-model.trim="form.customerPhone" type="tel" class="form-control" autocomplete="tel" required :disabled="submitting" />
+                  <input id="f-phone" v-model.trim="form.customerPhone" type="tel" class="form-control" autocomplete="tel" required maxlength="20"
+                    pattern="\+?[0-9 \(\)\-]{8,20}" title="Con código de área, ejemplo: 261 4123456" placeholder="Ej: 261 4123456" :disabled="submitting" />
                 </div>
               </div>
             </div>
@@ -51,26 +65,29 @@
               <div class="form-row">
                 <div class="form-group">
                   <label for="f-street">Calle</label>
-                  <input id="f-street" v-model.trim="form.shippingStreet" class="form-control" autocomplete="address-line1" required :disabled="submitting" />
+                  <input id="f-street" v-model.trim="form.shippingStreet" class="form-control" autocomplete="address-line1" required maxlength="100" :disabled="submitting" />
                 </div>
                 <div class="form-group form-group-number">
                   <label for="f-number">Número</label>
-                  <input id="f-number" v-model.trim="form.shippingNumber" class="form-control" inputmode="numeric" autocomplete="address-line2" required :disabled="submitting" />
+                  <input id="f-number" v-model.trim="form.shippingNumber" class="form-control" autocomplete="off" required maxlength="6"
+                    pattern="[0-9]{1,6}|[sS]/?[nN]" title="Solo números, o S/N si no tiene" placeholder="o S/N" :disabled="submitting" />
                 </div>
               </div>
               <div class="form-row">
                 <div class="form-group">
                   <label for="f-city">Ciudad</label>
-                  <input id="f-city" v-model.trim="form.shippingCity" class="form-control" autocomplete="address-level2" required :disabled="submitting" />
+                  <input id="f-city" v-model.trim="form.shippingCity" class="form-control" autocomplete="address-level2" required maxlength="60"
+                    pattern="\p{L}[\p{L} .'\-]*" title="Solo letras" :disabled="submitting" />
                 </div>
                 <div class="form-group form-group-postal">
                   <label for="f-postal">Código Postal</label>
-                  <input id="f-postal" v-model.trim="form.shippingPostalCode" class="form-control" inputmode="numeric" autocomplete="postal-code" required :disabled="submitting" />
+                  <input id="f-postal" v-model.trim="form.shippingPostalCode" class="form-control" autocomplete="postal-code" required maxlength="8"
+                    pattern="[0-9]{4}|[A-Za-z][0-9]{4}[A-Za-z]{3}" title="4 números (ej: 5500) o formato completo (ej: M5500ABC)" :disabled="submitting" />
                 </div>
               </div>
               <div class="form-group">
                 <label for="f-notes">Notas (opcional)</label>
-                <textarea id="f-notes" v-model.trim="form.notes" class="form-control" rows="2" :disabled="submitting"></textarea>
+                <textarea id="f-notes" v-model.trim="form.notes" class="form-control" rows="2" maxlength="500" :disabled="submitting"></textarea>
               </div>
             </div>
           </div>
@@ -130,13 +147,18 @@ export default {
       submitting: false,
       error: '',
       form: {
-        customerName: '', customerEmail: '', customerPhone: '', customerDni: '',
+        customerName: '', customerEmail: '', customerEmailConfirmation: '', customerPhone: '', customerDni: '',
         shippingStreet: '', shippingNumber: '', shippingCity: '', shippingPostalCode: '',
         shippingZoneId: '', notes: ''
       }
     }
   },
   computed: {
+    emailMismatch() {
+      const a = this.form.customerEmail.toLowerCase()
+      const b = this.form.customerEmailConfirmation.toLowerCase()
+      return b.length > 0 && a !== b
+    },
     subtotal() { return getSubtotal(this.items) },
     total() { return this.subtotal + (this.shippingQuote && !this.shippingQuote.free ? this.shippingQuote.cost : 0) }
   },
@@ -162,9 +184,16 @@ export default {
         this.quotingShipping = false
       }
     },
+    // El DNI solo admite números: se descartan puntos, letras y espacios mientras se escribe.
+    onlyDigits(event, field, max) {
+      const clean = event.target.value.replace(/\D/g, '').slice(0, max)
+      this.form[field] = clean
+      event.target.value = clean
+    },
     async handleSubmit() {
       this.error = ''
       if (!this.form.shippingZoneId) { this.error = 'Seleccioná una provincia de envío'; return }
+      if (this.emailMismatch) { this.error = 'Los emails no coinciden'; return }
       this.submitting = true
       try {
         const payload = {
@@ -208,6 +237,7 @@ h1 { font-size: 1.8rem; margin-bottom: 1.5rem; }
 .form-group { margin-bottom: 0.9rem; }
 .form-group-number { max-width: 120px; flex: 0 0 auto; }
 .form-group-postal { max-width: 160px; flex: 0 0 auto; }
+.form-hint { display: block; margin-top: 0.25rem; font-size: 0.75rem; color: var(--text-muted); }
 .form-group label {
   display: block; font-family: var(--font-display); font-size: 0.75rem; font-weight: 700;
   letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 0.35rem;
