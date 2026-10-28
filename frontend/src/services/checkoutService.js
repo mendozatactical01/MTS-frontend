@@ -42,3 +42,8 @@ export function getOrderByAccessToken(accessToken) {
   }
   return httpPublic.get(`/api/store/orders/${accessToken}`)
 }
+
+// Respaldo del aviso de Mercado Pago: el backend re-consulta si el pedido ya se pagó.
+export function syncOrderPayment(accessToken) {
+  return httpPublic.post(`/api/store/orders/${accessToken}/sync-payment`)
+}

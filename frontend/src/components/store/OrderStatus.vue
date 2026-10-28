@@ -48,7 +48,10 @@
 
 <script>
 import StoreLayout from './StoreLayout.vue'
-import { getOrderByAccessToken } from '../../services/checkoutService'
+import { getOrderByAccessToken, syncOrderPayment } from '../../services/checkoutService'
+
+const SYNC_ATTEMPTS = 6
+const SYNC_INTERVAL_MS = 5000
 
 const STATUS = {
   PENDING_PAYMENT: { label: 'Esperando confirmación de pago', icon: '⏳', cls: 'status-pending' },
@@ -62,7 +65,7 @@ export default {
   name: 'OrderStatus',
   components: { StoreLayout },
   data() {
-    return { order: null, loading: true }
+    return { order: null, loading: true, syncTimer: null }
   },
   computed: {
     statusLabel() { return STATUS[this.order?.status]?.label || this.order?.status },
@@ -78,8 +81,26 @@ export default {
     } finally {
       this.loading = false
     }
+    this.syncPayment(SYNC_ATTEMPTS)
+  },
+  beforeUnmount() {
+    clearTimeout(this.syncTimer)
   },
   methods: {
+    // Si el pedido todavía no figura pagado, le pide al backend que lo verifique con Mercado Pago
+    // (por si el aviso de MP no llegó). Reintenta unas veces porque la aprobación puede demorar.
+    async syncPayment(attemptsLeft) {
+      if (!this.order || this.order.status === 'PAID' || attemptsLeft <= 0) return
+      try {
+        const res = await syncOrderPayment(this.order.accessToken)
+        this.order = res.data
+      } catch {
+        // sin conexión o error: se muestra el estado que ya teníamos
+      }
+      if (this.order.status === 'PENDING_PAYMENT') {
+        this.syncTimer = setTimeout(() => this.syncPayment(attemptsLeft - 1), SYNC_INTERVAL_MS)
+      }
+    },
     formatMoney(v) { return Number(v || 0).toLocaleString('es-AR') },
     formatDate(d) { return d ? new Date(d).toLocaleString('es-AR') : '' }
   }
