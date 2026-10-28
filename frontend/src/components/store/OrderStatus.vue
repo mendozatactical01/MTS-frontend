@@ -40,6 +40,18 @@
           </div>
         </div>
 
+        <div v-if="order.status === 'PENDING_PAYMENT'" class="pending-actions">
+          <p class="text-muted">Si no terminaste de pagar, podés continuar. Si querés cambiar algo, modificá el pedido:
+            se cancela este y volvés al carrito con tus productos.</p>
+          <a v-if="order.paymentUrl" :href="order.paymentUrl" class="btn btn-primary w-100">Continuar con el pago</a>
+          <button type="button" class="btn btn-secondary w-100 mt-2" :disabled="cancelling" @click="handleModify">
+            <span v-if="cancelling" class="spinner spinner-sm" aria-hidden="true"></span>
+            {{ cancelling ? 'Cancelando…' : 'Modificar pedido' }}
+          </button>
+          <span v-if="actionError" class="invalid-feedback d-block mt-2" role="alert">{{ actionError }}</span>
+        </div>
+        <router-link v-else-if="isClosedUnpaid && hasCart" to="/carrito" class="btn btn-primary w-100 mt-3">Volver al carrito</router-link>
+
         <router-link to="/tienda" class="btn btn-secondary w-100 mt-3">Volver a la tienda</router-link>
       </div>
     </div>
@@ -48,7 +60,8 @@
 
 <script>
 import StoreLayout from './StoreLayout.vue'
-import { getOrderByAccessToken, syncOrderPayment } from '../../services/checkoutService'
+import { getOrderByAccessToken, syncOrderPayment, cancelOrder, clearPendingOrderToken } from '../../services/checkoutService'
+import { getCart, clearCart } from '../../services/cartService'
 
 const SYNC_ATTEMPTS = 6
 const SYNC_INTERVAL_MS = 5000
@@ -65,17 +78,19 @@ export default {
   name: 'OrderStatus',
   components: { StoreLayout },
   data() {
-    return { order: null, loading: true, syncTimer: null }
+    return { order: null, loading: true, syncTimer: null, cancelling: false, actionError: '', hasCart: getCart().length > 0 }
   },
   computed: {
     statusLabel() { return STATUS[this.order?.status]?.label || this.order?.status },
     statusIcon() { return STATUS[this.order?.status]?.icon || '•' },
-    statusClass() { return STATUS[this.order?.status]?.cls || '' }
+    statusClass() { return STATUS[this.order?.status]?.cls || '' },
+    isClosedUnpaid() { return ['CANCELLED', 'EXPIRED', 'REJECTED'].includes(this.order?.status) }
   },
   async mounted() {
     try {
       const res = await getOrderByAccessToken(this.$route.params.accessToken)
       this.order = res.data
+      this.afterStatusChange()
     } catch {
       this.order = null
     } finally {
@@ -87,6 +102,29 @@ export default {
     clearTimeout(this.syncTimer)
   },
   methods: {
+    // Pagado: se vacía el carrito. Cerrado sin pagar: el carrito queda para volver a intentar.
+    afterStatusChange() {
+      if (!this.order || this.order.status === 'PENDING_PAYMENT') return
+      clearPendingOrderToken(this.order.accessToken)
+      if (this.order.status === 'PAID') {
+        clearCart()
+        this.hasCart = false
+      }
+    },
+    async handleModify() {
+      this.actionError = ''
+      this.cancelling = true
+      try {
+        const res = await cancelOrder(this.order.accessToken)
+        this.order = res.data
+        this.afterStatusChange()
+        if (this.order.status !== 'PAID') this.$router.push('/carrito')
+      } catch (e) {
+        this.actionError = e.response?.data?.message || 'No se pudo modificar el pedido. Intentá de nuevo.'
+      } finally {
+        this.cancelling = false
+      }
+    },
     // Si el pedido todavía no figura pagado, le pide al backend que lo verifique con Mercado Pago
     // (por si el aviso de MP no llegó). Reintenta unas veces porque la aprobación puede demorar.
     async syncPayment(attemptsLeft) {
@@ -94,6 +132,7 @@ export default {
       try {
         const res = await syncOrderPayment(this.order.accessToken)
         this.order = res.data
+        this.afterStatusChange()
       } catch {
         // sin conexión o error: se muestra el estado que ya teníamos
       }
@@ -130,4 +169,6 @@ export default {
   .status-banner { padding: 1rem; gap: 0.75rem; }
   .status-icon { font-size: 1.4rem; }
 }
+.pending-actions { margin-top: 1rem; }
+.pending-actions p { font-size: 0.88rem; margin-bottom: 0.75rem; }
 </style>

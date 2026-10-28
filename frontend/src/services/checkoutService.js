@@ -47,3 +47,40 @@ export function getOrderByAccessToken(accessToken) {
 export function syncOrderPayment(accessToken) {
   return httpPublic.post(`/api/store/orders/${accessToken}/sync-payment`)
 }
+
+export function cancelOrder(accessToken) {
+  return httpPublic.post(`/api/store/orders/${accessToken}/cancel`)
+}
+
+// ── Datos que se recuerdan en este navegador ──
+// Pedido sin pagar: si el cliente vuelve de Mercado Pago sin pagar, puede retomarlo,
+// y si arma uno nuevo el backend cancela este y libera su stock.
+const PENDING_KEY = 'mts_pending_order'
+// Datos del formulario de checkout, para no tener que cargarlos de nuevo.
+const FORM_KEY = 'mts_checkout_form'
+
+function readJson(key) {
+  try { return JSON.parse(localStorage.getItem(key)) } catch { return null }
+}
+function writeJson(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)) } catch { /* sin almacenamiento: se ignora */ }
+}
+
+export function getPendingOrderToken() {
+  return readJson(PENDING_KEY)?.accessToken || null
+}
+export function setPendingOrderToken(accessToken) {
+  writeJson(PENDING_KEY, { accessToken })
+  window.dispatchEvent(new Event('mts-cart-updated'))
+}
+export function clearPendingOrderToken(accessToken) {
+  if (accessToken && getPendingOrderToken() !== accessToken) return
+  try { localStorage.removeItem(PENDING_KEY) } catch { /* ignorar */ }
+}
+
+export function getSavedCheckoutForm() {
+  return readJson(FORM_KEY)
+}
+export function saveCheckoutForm(form) {
+  writeJson(FORM_KEY, form)
+}

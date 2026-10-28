@@ -3,6 +3,12 @@
     <div class="section">
       <h1>Carrito</h1>
 
+      <div v-if="pendingToken" class="pending-banner" role="status">
+        <span>Tenés un pedido esperando pago.</span>
+        <router-link :to="`/pedido/${pendingToken}`" class="btn btn-sm btn-primary">Ver / continuar el pago</router-link>
+        <small>Si volvés a confirmar la compra, ese pedido se cancela y se arma uno nuevo.</small>
+      </div>
+
       <div v-if="items.length === 0" class="empty-state">
         <div class="empty-state-icon">🛒</div>
         <p>Tu carrito está vacío</p>
@@ -50,12 +56,13 @@
 <script>
 import StoreLayout from './StoreLayout.vue'
 import { getCart, updateQuantity, removeItem, getSubtotal, describeSelections } from '../../services/cartService'
+import { getPendingOrderToken } from '../../services/checkoutService'
 
 export default {
   name: 'Cart',
   components: { StoreLayout },
   data() {
-    return { items: [] }
+    return { pendingToken: null, items: [] }
   },
   computed: {
     subtotal() { return getSubtotal(this.items) }
@@ -67,6 +74,7 @@ export default {
     describeSelections,
     refresh() {
       this.items = getCart()
+      this.pendingToken = getPendingOrderToken()
     },
     changeQty(item, qty) {
       updateQuantity(item.key, qty)
@@ -120,4 +128,10 @@ h1 { font-size: 1.8rem; margin-bottom: 1.5rem; }
   .cart-row-subtotal { grid-area: subtotal; text-align: left; }
   .cart-row-remove { position: absolute; top: 0.5rem; right: 0.5rem; }
 }
+.pending-banner {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem;
+  padding: 0.75rem 1rem; margin-bottom: 1.25rem; border: 1px solid var(--border);
+  border-left: 3px solid var(--crimson-light); background: var(--bg-card); border-radius: 4px;
+}
+.pending-banner small { flex-basis: 100%; color: var(--text-muted); }
 </style>

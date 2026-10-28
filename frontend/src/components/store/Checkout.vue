@@ -131,9 +131,9 @@
 
 <script>
 import StoreLayout from './StoreLayout.vue'
-import { getCart, getSubtotal, getTotalWeight, clearCart, describeSelections } from '../../services/cartService'
+import { getCart, getSubtotal, getTotalWeight, describeSelections } from '../../services/cartService'
 import { getShippingZones, quoteShipping } from '../../services/storeService'
-import { createOrder } from '../../services/checkoutService'
+import { createOrder, getPendingOrderToken, setPendingOrderToken, getSavedCheckoutForm, saveCheckoutForm } from '../../services/checkoutService'
 
 export default {
   name: 'Checkout',
@@ -164,8 +164,19 @@ export default {
   },
   async mounted() {
     this.items = getCart()
+    // Datos de la última compra en este navegador: el cliente no tiene que cargarlos de nuevo.
+    const saved = getSavedCheckoutForm()
+    if (saved) {
+      for (const field of Object.keys(this.form)) {
+        if (saved[field] !== undefined && saved[field] !== null) this.form[field] = saved[field]
+      }
+    }
     const res = await getShippingZones()
     this.zones = res.data
+    if (this.form.shippingZoneId && !this.zones.some(z => z.id === this.form.shippingZoneId)) {
+      this.form.shippingZoneId = ''
+    }
+    if (this.form.shippingZoneId) this.handleQuoteShipping()
   },
   methods: {
     describeSelections,
@@ -198,6 +209,7 @@ export default {
       try {
         const payload = {
           ...this.form,
+          previousAccessToken: getPendingOrderToken(),
           items: this.items.map(i => ({
             itemType: i.type === 'combo' ? 'COMBO' : 'PRODUCT',
             productId: i.type === 'combo' ? null : i.id,
@@ -208,7 +220,9 @@ export default {
           }))
         }
         const res = await createOrder(payload)
-        clearCart()
+        // El carrito se vacía recién cuando el pago se confirma (OrderStatus), por si vuelve sin pagar.
+        setPendingOrderToken(res.data.accessToken)
+        saveCheckoutForm(this.form)
         if (res.data.initPoint) {
           window.location.href = res.data.initPoint
         } else {
