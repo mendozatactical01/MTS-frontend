@@ -141,7 +141,7 @@
                       </li>
                     </ul>
                   </div>
-                  <span class="combo-slot-hint">{{ slot.options.length >= 2 ? `El cliente elige 1 de ${slot.options.length}` : 'Agregá al menos 2 opciones' }}</span>
+                  <span class="combo-slot-hint">{{ slot.options.length >= 2 ? `El cliente elige 1 de ${slot.options.length}` : slot.options.length === 1 ? 'Con una sola opción, al guardar pasa a fijos' : 'Sin opciones: se descarta al guardar' }}</span>
                 </div>
                 <button type="button" class="btn btn-sm btn-secondary mt-1" @click="addChoiceSlot" :disabled="isProcessing">+ Agregar grupo para elegir</button>
               </div>
@@ -194,11 +194,9 @@ export default {
       const used = new Set(this.fixedSlots.map(s => s.options[0]?.productId))
       return this.products.filter(p => p.name.toLowerCase().includes(q) && !used.has(p.id)).slice(0, 8)
     },
+    // Lo que falta se explica al tocar Guardar (handleSave), en vez de deshabilitar el botón sin aviso.
     canSave() {
-      return this.form.name && this.form.price !== '' && this.form.price >= 0 &&
-        this.form.priceCash !== '' && this.form.priceCash >= 0 && this.form.items.length > 0 &&
-        this.form.items.every(s => s.quantity >= 1 && s.options.length > 0) &&
-        !this.isUploadingImage
+      return !this.isUploadingImage
     }
   },
   async mounted() {
@@ -280,9 +278,17 @@ export default {
     closeModal() { if (!this.isProcessing) this.modal.show = false },
     async handleSave() {
       this.errors = {}
+      // Grupos para elegir: si quedó vacío se descarta; si tiene una sola opción, pasa a fijo.
+      this.form.items = this.form.items
+        .filter(s => !(s.kind === 'choice' && s.options.length === 0))
+        .map(s => (s.kind === 'choice' && s.options.length === 1 ? { ...s, kind: 'fixed', label: '' } : s))
+      if (!this.form.name) { this.errors.items = 'Falta el nombre del combo'; return }
+      if (this.form.price === '' || this.form.price < 0 || this.form.priceCash === '' || this.form.priceCash < 0) {
+        this.errors.items = 'Faltan los precios del combo (tarjeta y efectivo)'; return
+      }
       if (this.form.items.length === 0) { this.errors.items = 'Agregá al menos un producto fijo o un grupo para elegir'; return }
+      if (this.form.items.some(s => !(s.quantity >= 1))) { this.errors.items = 'Las cantidades tienen que ser 1 o más'; return }
       if (this.choiceSlots.some(s => !s.label)) { this.errors.items = 'Poné un nombre a cada grupo para elegir (ej. Reel)'; return }
-      if (this.choiceSlots.some(s => s.options.length < 2)) { this.errors.items = 'Cada grupo para elegir necesita al menos 2 opciones (si es uno solo, agregalo como fijo)'; return }
       this.isProcessing = true
       try {
         const payload = {
