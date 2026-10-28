@@ -416,6 +416,16 @@ label { font-family: var(--font-display); font-weight: 600; letter-spacing: 0.05
 
 .tac-modal-lg { max-width: 900px; }
 
+/* Modales cuyo contenido va dentro de un <form>: el form toma el alto disponible
+   para que .tac-modal-body haga scroll y el pie quede siempre visible. */
+.tac-modal > form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.tac-modal-footer { flex-shrink: 0; }
+
 .tac-modal-header {
   padding: 1rem 1.25rem;
   border-bottom: 1px solid var(--border);

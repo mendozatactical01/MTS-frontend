@@ -34,20 +34,18 @@
                 <span v-if="slot.options.length === 1 && slot.label" class="combo-slot-fixed">— {{ slot.options[0].productName }}</span>
               </p>
 
-              <div v-if="slot.options.length > 1" class="combo-choices" role="radiogroup" :aria-label="`Elegí ${slotTitle(slot)}`">
-                <button
-                  v-for="opt in slot.options" :key="opt.productId"
-                  type="button" role="radio"
-                  class="combo-choice" :class="{ active: chosen(slot)?.productId === opt.productId, disabled: !opt.available }"
-                  :disabled="!opt.available"
-                  :aria-checked="chosen(slot)?.productId === opt.productId"
-                  @click="selectOption(slot, opt)"
-                >
-                  <span class="combo-choice-img" aria-hidden="true" :style="opt.imageUrl ? { backgroundImage: `url(${opt.imageUrl})` } : null"></span>
-                  <span class="combo-choice-name">{{ opt.productName }}</span>
-                  <span v-if="!opt.available" class="combo-choice-out">Sin stock</span>
-                </button>
-              </div>
+              <select
+                v-if="slot.options.length > 1"
+                class="form-select combo-select"
+                :value="chosen(slot)?.productId ?? ''"
+                :aria-label="`Elegí ${slotTitle(slot)}`"
+                @change="selectOptionById(slot, $event.target.value)"
+              >
+                <option value="" disabled>Elegí {{ slotTitle(slot).toLowerCase() }}...</option>
+                <option v-for="opt in slot.options" :key="opt.productId" :value="opt.productId" :disabled="!opt.available">
+                  {{ opt.productName }}{{ opt.available ? '' : ' (sin stock)' }}
+                </option>
+              </select>
 
               <div v-if="chosenOption(slot)?.sizes" class="size-options" role="group" :aria-label="`Talle de ${chosenOption(slot).productName}`">
                 <span class="combo-size-label">Talle:</span>
@@ -143,6 +141,10 @@ export default {
       this.selectionError = ''
       this.added = false
     },
+    selectOptionById(slot, productId) {
+      const opt = slot.options.find(o => String(o.productId) === String(productId))
+      if (opt) this.selectOption(slot, opt)
+    },
     selectSize(slot, size) {
       this.selections[slot.id].sizeId = size.id
       this.selectionError = ''
@@ -204,18 +206,11 @@ export default {
 .combo-slot + .combo-slot { border-top: 1px solid var(--border); margin-top: 0.75rem; padding-top: 0.75rem; }
 .combo-slot-title { color: var(--text-primary); font-size: 0.92rem; font-weight: 600; margin-bottom: 0; }
 .combo-slot-fixed { font-weight: 400; color: var(--text-secondary); }
-.combo-choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.5rem; margin-top: 0.5rem; }
-.combo-choice {
-  display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem; text-align: left;
-  background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm);
-  color: var(--text-primary); cursor: pointer; transition: var(--transition); position: relative;
+.combo-select {
+  margin-top: 0.5rem; width: 100%; max-width: 360px;
+  background-color: var(--bg-input); border: 1px solid var(--border); color: var(--text-primary);
 }
-.combo-choice:hover:not(.disabled) { border-color: var(--crimson); }
-.combo-choice.active { border-color: var(--crimson); box-shadow: inset 0 0 0 1px var(--crimson); }
-.combo-choice.disabled { opacity: 0.45; cursor: not-allowed; }
-.combo-choice-img { flex: 0 0 40px; height: 40px; border-radius: var(--radius-sm); background: var(--bg-card) center / cover no-repeat; }
-.combo-choice-name { font-size: 0.82rem; line-height: 1.25; }
-.combo-choice-out { position: absolute; top: 0.2rem; right: 0.35rem; font-size: 0.65rem; color: var(--text-muted); }
+.combo-select:focus { border-color: var(--crimson); box-shadow: 0 0 0 2px rgba(139, 26, 26, 0.35); }
 .combo-size-label { font-size: 0.8rem; color: var(--text-secondary); align-self: center; }
 .size-options { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
 .size-btn {
