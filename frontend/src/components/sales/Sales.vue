@@ -550,6 +550,7 @@
                         <select v-model.number="item.productId" class="form-select form-select-sm" aria-label="Producto" :disabled="isProcessing">
                           <option value="" disabled>Seleccionar</option>
                           <option v-for="p in products" :key="p.id" :value="p.id">{{ p.name }}</option>
+                          <option v-if="item.productId && !products.some(p => p.id === item.productId)" :value="item.productId">{{ item.productName || 'Producto' }} (archivado)</option>
                         </select>
                       </td>
                       <td>
@@ -860,7 +861,7 @@ export default {
     startEditSale(sale) {
       const cloned = JSON.parse(JSON.stringify(sale))
       cloned.items = (cloned.items || []).map(i => ({
-        id: i.id, productId: i.product?.id ?? i.productId ?? null,
+        id: i.id, productId: i.product?.id ?? i.productId ?? null, productName: i.product?.name ?? null,
         sizeId: i.size?.id ?? i.sizeId ?? null,
         quantity: i.quantity, unitPrice: Number(i.unitPrice)
       }))

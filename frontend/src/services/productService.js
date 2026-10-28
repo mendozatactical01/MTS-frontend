@@ -7,8 +7,15 @@ export function getAllProducts() {
 export function addProduct(product) {
   return axios.post(`${API_URL}/save`, product)
 }
+// Responde { result: 'DELETED' | 'ARCHIVED' }: si el producto tiene historial de ventas se archiva.
 export function deleteProduct(id) {
   return axios.delete(`${API_URL}/${id}`)
+}
+export function getArchivedProducts() {
+  return axios.get(`${API_URL}/archived`)
+}
+export function restoreProduct(id) {
+  return axios.patch(`${API_URL}/${id}/restore`)
 }
 export function editProduct(product) {
   return axios.post(`${API_URL}/save`, product)

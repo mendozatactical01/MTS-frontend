@@ -101,14 +101,52 @@
                     placeholder="Buscar producto..." aria-label="Buscar producto" />
                   <button v-if="filters.productSearch" class="search-clear" @click="filters.productSearch = ''" aria-label="Limpiar búsqueda">✕</button>
                 </div>
-                <select v-model.number="productPageSize" class="form-select form-select-sm" style="width:auto" aria-label="Cantidad de productos por página">
+                <select v-if="!showArchived" v-model.number="productPageSize" class="form-select form-select-sm" style="width:auto" aria-label="Cantidad de productos por página">
                   <option :value="10">10</option>
                   <option :value="20">20</option>
                   <option :value="50">50</option>
                 </select>
+                <button class="btn btn-sm btn-secondary text-nowrap" @click="toggleArchived" :disabled="isProcessing" :aria-pressed="showArchived">
+                  {{ showArchived ? '‹ Volver a activos' : 'Ver archivados' }}
+                </button>
               </div>
             </div>
-            <div class="tac-card-body">
+            <div v-if="showArchived" class="tac-card-body">
+              <p class="text-muted small mb-3">
+                Productos que ya no se venden pero tienen ventas registradas. No aparecen en stock, ventas ni tienda.
+                Al restaurarlos vuelven a la lista sin publicar.
+              </p>
+              <div v-if="loadingArchived" class="empty-state"><p>Cargando...</p></div>
+              <div v-else-if="filteredArchived.length === 0" class="empty-state">
+                <div class="empty-state-icon">◈</div>
+                <p>{{ archivedProducts.length === 0 ? 'No hay productos archivados' : 'Sin resultados' }}</p>
+              </div>
+              <div v-else class="table-responsive">
+                <table class="tac-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Producto</th>
+                      <th scope="col" class="text-end">💳 Tarjeta</th>
+                      <th scope="col" class="text-end">💵 Efectivo</th>
+                      <th scope="col">Categoría</th>
+                      <th scope="col" class="text-center" style="width:130px">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="prod in filteredArchived" :key="prod.id">
+                      <td class="fw-bold">{{ prod.name }}</td>
+                      <td class="text-end"><span class="badge badge-crimson">${{ prod.price?.toFixed(2) }}</span></td>
+                      <td class="text-end"><span class="badge badge-steel">${{ prod.priceCash?.toFixed(2) ?? '—' }}</span></td>
+                      <td><span class="chip">{{ prod.category?.name || '—' }}</span></td>
+                      <td class="text-center">
+                        <button class="btn btn-sm btn-primary" @click="handleRestore(prod)" :disabled="isProcessing" :aria-label="`Restaurar producto ${prod.name}`">Restaurar</button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div v-else class="tac-card-body">
               <!-- Add form -->
               <form @submit.prevent="handleAddProduct" class="section-form mb-3">
                 <div class="row g-2 align-items-end">
@@ -266,7 +304,7 @@
                         <div class="d-flex justify-content-center gap-1">
                           <template v-if="editingId !== prod.id">
                             <button class="btn btn-sm btn-warning btn-icon" @click="startEdit('product', prod)" :disabled="isProcessing" :aria-label="`Editar producto ${prod.name}`">✎</button>
-                            <button class="btn btn-sm btn-danger btn-icon"  @click="handleDelete('product', prod.id)" :disabled="isProcessing" :aria-label="`Eliminar producto ${prod.name}`">✕</button>
+                            <button class="btn btn-sm btn-danger btn-icon"  @click="handleDeleteProduct(prod)" :disabled="isProcessing" :aria-label="`Eliminar producto ${prod.name}`">✕</button>
                           </template>
                           <template v-else>
                             <button class="btn btn-sm btn-primary btn-icon"  @click="handleSaveEdit('product', prod.id)" :disabled="isProcessing || isUploadingImage || loadingEditImages" aria-label="Guardar cambios">✓</button>
@@ -426,7 +464,7 @@
 <script>
 import BaseLayout from './BaseLayout.vue'
 import { getAllCategories, addCategory, deleteCategory, editCategory } from '../services/categoryService'
-import { getAllProducts, addProduct, deleteProduct, editProduct } from '../services/productService'
+import { getAllProducts, addProduct, deleteProduct, editProduct, getArchivedProducts, restoreProduct } from '../services/productService'
 import { getProductImages, saveProductImages } from '../services/productImageService'
 import ImageListEditor from './admin/ImageListEditor.vue'
 import { getAllSizes, addSize, deleteSize, editSize } from '../services/sizeService'
@@ -449,6 +487,7 @@ export default {
       filters: { productSearch: '', sizeSearch: '' },
       productPage: 1,
       productPageSize: 10,
+      showArchived: false, archivedProducts: [], loadingArchived: false,
       isLoading: false, isProcessing: false, isUploadingImage: false, loadingEditImages: false,
       errors: {},
       toast: { show: false, type: 'success', message: '' }
@@ -458,6 +497,13 @@ export default {
     filteredProducts() {
       const s = this.filters.productSearch.toLowerCase()
       return this.products.filter(p =>
+        p.name.toLowerCase().includes(s) ||
+        (p.category?.name || '').toLowerCase().includes(s)
+      )
+    },
+    filteredArchived() {
+      const s = this.filters.productSearch.toLowerCase()
+      return this.archivedProducts.filter(p =>
         p.name.toLowerCase().includes(s) ||
         (p.category?.name || '').toLowerCase().includes(s)
       )
@@ -609,6 +655,41 @@ export default {
         this.showToast('success', 'Eliminado')
       } catch { this.showToast('error', 'Error al eliminar') }
       finally { this.isProcessing = false }
+    },
+
+    async handleDeleteProduct(prod) {
+      if (!confirm(`¿Eliminar "${prod.name}"?\n\nSi tiene ventas registradas se archiva en vez de borrarse (lo podés restaurar desde "Ver archivados").`)) return
+      this.isProcessing = true
+      try {
+        const { data } = await deleteProduct(prod.id)
+        await this.fetchProducts()
+        if (data?.result === 'ARCHIVED') this.showToast('success', `"${prod.name}" archivado (tiene ventas registradas)`)
+        else this.showToast('success', 'Eliminado')
+      } catch (e) {
+        this.showToast('error', e.response?.data?.message || 'Error al eliminar')
+      } finally { this.isProcessing = false }
+    },
+
+    async toggleArchived() {
+      this.cancelEdit()
+      this.showArchived = !this.showArchived
+      if (!this.showArchived) return
+      this.loadingArchived = true
+      try { this.archivedProducts = (await getArchivedProducts()).data || [] }
+      catch { this.showToast('error', 'Error al cargar archivados') }
+      finally { this.loadingArchived = false }
+    },
+
+    async handleRestore(prod) {
+      this.isProcessing = true
+      try {
+        await restoreProduct(prod.id)
+        this.archivedProducts = this.archivedProducts.filter(p => p.id !== prod.id)
+        await this.fetchProducts()
+        this.showToast('success', `"${prod.name}" restaurado (sin publicar)`)
+      } catch (e) {
+        this.showToast('error', e.response?.data?.message || 'Error al restaurar')
+      } finally { this.isProcessing = false }
     },
 
     async handleAddUser() {
