@@ -163,6 +163,9 @@ export default {
     total() { return this.subtotal + (this.shippingQuote && !this.shippingQuote.free ? this.shippingQuote.cost : 0) }
   },
   async mounted() {
+    // Si vuelve con "atrás" desde Mercado Pago, el navegador restaura la página tal cual
+    // (con el botón en "Procesando…"): se reactiva.
+    window.addEventListener('pageshow', this.onPageShow)
     this.items = getCart()
     // Datos de la última compra en este navegador: el cliente no tiene que cargarlos de nuevo.
     const saved = getSavedCheckoutForm()
@@ -178,8 +181,14 @@ export default {
     }
     if (this.form.shippingZoneId) this.handleQuoteShipping()
   },
+  beforeUnmount() {
+    window.removeEventListener('pageshow', this.onPageShow)
+  },
   methods: {
     describeSelections,
+    onPageShow(event) {
+      if (event.persisted) this.submitting = false
+    },
     formatMoney(v) { return Number(v || 0).toLocaleString('es-AR') },
     async handleQuoteShipping() {
       if (!this.form.shippingZoneId) { this.shippingQuote = null; return }
@@ -202,6 +211,8 @@ export default {
       event.target.value = clean
     },
     async handleSubmit() {
+      // Dos toques rápidos disparan dos submit antes de que el botón se vea deshabilitado.
+      if (this.submitting) return
       this.error = ''
       if (!this.form.shippingZoneId) { this.error = 'Seleccioná una provincia de envío'; return }
       if (this.emailMismatch) { this.error = 'Los emails no coinciden'; return }
@@ -223,6 +234,8 @@ export default {
         // El carrito se vacía recién cuando el pago se confirma (OrderStatus), por si vuelve sin pagar.
         setPendingOrderToken(res.data.accessToken)
         saveCheckoutForm(this.form)
+        // El botón queda deshabilitado mientras carga Mercado Pago: si se habilitara acá,
+        // un segundo toque durante la carga generaría otro pedido.
         if (res.data.initPoint) {
           window.location.href = res.data.initPoint
         } else {
@@ -230,7 +243,6 @@ export default {
         }
       } catch (e) {
         this.error = e.response?.data?.message || 'No se pudo crear el pedido. Intentá de nuevo.'
-      } finally {
         this.submitting = false
       }
     }
