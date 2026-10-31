@@ -76,12 +76,19 @@
         <router-link to="/tienda" class="store-drawer-link">Todos los productos</router-link>
         <template v-if="categories.length">
           <span class="store-drawer-label">Categorías</span>
-          <router-link
-            v-for="cat in categories"
-            :key="cat.id"
-            :to="{ path: '/tienda', query: { category: cat.id } }"
-            class="store-drawer-link store-drawer-sublink"
-          >{{ cat.name }}</router-link>
+          <template v-for="group in categories" :key="group.id">
+            <router-link
+              :to="{ path: '/tienda', query: { category: group.id } }"
+              class="store-drawer-link store-drawer-sublink"
+              :class="{ 'store-drawer-group': group.children.length }"
+            >{{ group.name }}</router-link>
+            <router-link
+              v-for="cat in group.children"
+              :key="cat.id"
+              :to="{ path: '/tienda', query: { category: cat.id } }"
+              class="store-drawer-link store-drawer-sublink store-drawer-child"
+            >{{ cat.name }}</router-link>
+          </template>
         </template>
         <span class="store-drawer-label">Mi compra</span>
         <router-link to="/carrito" class="store-drawer-link">Carrito</router-link>
@@ -134,6 +141,7 @@
 import StoreEmblem from './StoreEmblem.vue'
 import { getCount, getCart } from '../../services/cartService'
 import { getPublishedProducts } from '../../services/storeService'
+import { buildCategoryTree } from '../../utils/categoryTree'
 
 export default {
   name: 'StoreLayout',
@@ -178,9 +186,7 @@ export default {
     async loadCategories() {
       try {
         const { data } = await getPublishedProducts()
-        const map = new Map()
-        data.forEach(p => { if (p.category) map.set(p.category.id, p.category) })
-        this.categories = [...map.values()].sort((a, b) => a.name.localeCompare(b.name))
+        this.categories = buildCategoryTree(data)
       } catch {
         this.categories = []
       }
@@ -309,6 +315,8 @@ export default {
 }
 .store-drawer-link:hover, .store-drawer-link.active { background: var(--bg-hover); border-left-color: var(--crimson); }
 .store-drawer-sublink { font-size: 0.95rem; color: var(--text-secondary); text-transform: none; font-family: var(--font-body); font-weight: 500; letter-spacing: 0; }
+.store-drawer-group { font-weight: 700; color: var(--text-primary); }
+.store-drawer-child { padding-left: 2.5rem; font-size: 0.9rem; }
 
 .store-main { flex: 1; }
 

@@ -140,7 +140,7 @@
                   <label for="item-size">Talle</label>
                   <select id="item-size" v-model.number="itemForm.sizeId" class="form-select" :disabled="isProcessing">
                     <option value="">Sin talle</option>
-                    <option v-for="s in sizes" :key="s.id" :value="s.id">{{ s.name }}</option>
+                    <option v-for="s in sizesForProduct(itemForm.productId)" :key="s.id" :value="s.id">{{ s.name }}</option>
                   </select>
                 </div>
               </div>
@@ -556,7 +556,7 @@
                       <td>
                         <select v-model.number="item.sizeId" class="form-select form-select-sm" aria-label="Talle" :disabled="isProcessing">
                           <option value="">Sin talle</option>
-                          <option v-for="s in sizes" :key="s.id" :value="s.id">{{ s.name }}</option>
+                          <option v-for="s in sizesForProduct(item.productId, item.sizeId)" :key="s.id" :value="s.id">{{ s.name }}</option>
                         </select>
                       </td>
                       <td><input v-model.number="item.quantity" type="number" min="1" class="form-control form-control-sm" style="width:70px" aria-label="Cantidad" :disabled="isProcessing" /></td>
@@ -586,7 +586,7 @@
                   <div class="col-md-2">
                     <select v-model.number="editModal.newItem.sizeId" class="form-select form-select-sm" aria-label="Talle nuevo" :disabled="isProcessing">
                       <option value="">Sin talle</option>
-                      <option v-for="s in sizes" :key="s.id" :value="s.id">{{ s.name }}</option>
+                      <option v-for="s in sizesForProduct(editModal.newItem.productId)" :key="s.id" :value="s.id">{{ s.name }}</option>
                     </select>
                   </div>
                   <div class="col-md-2">
@@ -636,7 +636,7 @@
 import BaseLayout from '@/components/BaseLayout.vue'
 import { getAllSales, getTodaySales, getSalesByDate, createSale, searchSalesByName, searchSalesByIdentification, updateSale, deleteSale, deliverItem, getPendingSales } from '@/services/saleService'
 import { getAllProducts } from '@/services/productService'
-import { getAllSizes }    from '@/services/sizeService'
+import { getAllSizes, getSizesByCategory } from '@/services/sizeService'
 import { getAllStock }    from '@/services/stockService'
 
 export default {
@@ -645,7 +645,7 @@ export default {
   data() {
     return {
       activeTab: 'sales',
-      sales: [], products: [], sizes: [], stock: [],
+      sales: [], products: [], sizes: [], sizesByCategory: {}, stock: [],
       pendingSales: [], isPendingLoading: false,
       saleForm: { customerName: '', customerIdentification: '', observations: '', discount: 0, paymentMethod: 'EFECTIVO', items: [] },
       itemForm: { productId: '', sizeId: '', quantity: 1, unitPrice: 0, deliverNow: true },
@@ -769,7 +769,20 @@ export default {
       finally { this.isLoading = false }
     },
     async fetchProducts() { this.products = (await getAllProducts()).data || [] },
-    async fetchSizes()    { this.sizes    = (await getAllSizes()).data    || [] },
+    async fetchSizes() {
+      const [all, byCategory] = await Promise.all([getAllSizes(), getSizesByCategory()])
+      this.sizes = all.data || []
+      this.sizesByCategory = byCategory.data || {}
+    },
+    // Talles de la categoría del producto, más los que tengan stock y el ya elegido (ventas viejas)
+    sizesForProduct(productId, currentSizeId = null) {
+      const product = this.products.find(p => p.id === productId)
+      if (!product) return currentSizeId ? this.sizes.filter(sz => sz.id === currentSizeId) : []
+      const allowed = new Set((this.sizesByCategory[product.category?.id] || this.sizes).map(sz => sz.id))
+      this.stock.forEach(st => { if (st.product?.id === productId && st.size) allowed.add(st.size.id) })
+      if (currentSizeId) allowed.add(currentSizeId)
+      return this.sizes.filter(sz => allowed.has(sz.id))
+    },
     async fetchStock()    { try { this.stock = (await getAllStock()).data || [] } catch { this.stock = [] } },
     async fetchSales() {
       this.isLoading = true

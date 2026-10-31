@@ -47,14 +47,32 @@
                   <input id="new-category-name" v-model.trim="forms.category.name" class="form-control"
                     :class="{ 'is-invalid': errors.categoryName }"
                     :aria-describedby="errors.categoryName ? 'new-category-error' : null"
-                    placeholder="Ej: Remeras, Pantalones, Calzado..." required :disabled="isProcessing" />
+                    placeholder="Ej: Remeras, Anzuelos, Reels..." required :disabled="isProcessing" />
                   <span v-if="errors.categoryName" id="new-category-error" class="invalid-feedback">{{ errors.categoryName }}</span>
+                </div>
+                <div class="form-group">
+                  <label for="new-category-parent">Dentro de</label>
+                  <select id="new-category-parent" v-model.number="forms.category.parentId" class="form-select" :disabled="isProcessing">
+                    <option value="">— Categoría principal —</option>
+                    <option v-for="r in rootCategories" :key="r.id" :value="r.id">{{ r.name }}</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="new-category-type">Tipo de talle</label>
+                  <select id="new-category-type" v-model.number="forms.category.sizeTypeId" class="form-select" :disabled="isProcessing">
+                    <option value="">{{ forms.category.parentId ? 'Igual que la principal' : 'Todos los talles' }}</option>
+                    <option v-for="t in sizeTypes" :key="t.id" :value="t.id">{{ t.name }}</option>
+                  </select>
                 </div>
                 <button type="submit" class="btn btn-primary" :disabled="!forms.category.name || isProcessing">
                   <span v-if="isProcessing" class="spinner spinner-sm"></span>
                   <span v-else>+ Agregar</span>
                 </button>
               </form>
+              <p class="text-muted small mb-3">
+                El tipo de talle define qué talles se ofrecen al cargar stock o vender (ej. Anzuelos solo muestra tamaños de anzuelo).
+                Las subcategorías usan el tipo de su principal si no tienen uno propio.
+              </p>
 
               <!-- List -->
               <div v-if="categories.length === 0" class="empty-state">
@@ -63,27 +81,44 @@
               </div>
 
               <div v-else class="tac-card" style="border-color: var(--border)">
-                <div v-for="cat in categories" :key="cat.id" class="list-item">
-                  <div class="flex-1">
-                    <span v-if="editingId !== cat.id" class="list-item-name">{{ cat.name }}</span>
-                    <input v-else v-model.trim="editingName" class="form-control form-control-sm"
-                      :class="{ 'is-invalid': errors.editing }"
-                      aria-label="Nombre de la categoría"
-                      @keyup.enter="handleSaveEdit('category', cat.id)"
-                      @keyup.esc="cancelEdit" />
-                    <span v-if="errors.editing && editingId === cat.id" class="invalid-feedback d-block">{{ errors.editing }}</span>
-                  </div>
-                  <div class="list-item-actions">
-                    <template v-if="editingId !== cat.id">
-                      <button class="btn btn-sm btn-warning btn-icon" @click="startEdit('category', cat)" :disabled="isProcessing" title="Editar" :aria-label="`Editar categoría ${cat.name}`">✎</button>
-                      <button class="btn btn-sm btn-danger btn-icon"  @click="handleDelete('category', cat.id)" :disabled="isProcessing" title="Eliminar" :aria-label="`Eliminar categoría ${cat.name}`">✕</button>
+                <template v-for="group in categoryTree" :key="group.id">
+                  <div v-for="cat in [group, ...group.children]" :key="cat.id" class="list-item" :class="{ 'category-child': cat.parent }">
+                    <template v-if="editingId !== cat.id || editingType !== 'category'">
+                      <div class="flex-1 d-flex align-items-center gap-2 flex-wrap">
+                        <span v-if="cat.parent" class="category-branch" aria-hidden="true">└</span>
+                        <span class="list-item-name" :class="{ 'fw-bold': !cat.parent }">{{ cat.name }}</span>
+                        <span class="chip" :title="'Tipo de talle'">{{ sizeTypeLabel(cat) }}</span>
+                        <span v-if="!cat.parent && group.children.length" class="text-muted small">{{ group.children.length }} subcategoría(s)</span>
+                      </div>
+                      <div class="list-item-actions">
+                        <button class="btn btn-sm btn-warning btn-icon" @click="startEdit('category', cat)" :disabled="isProcessing" title="Editar" :aria-label="`Editar categoría ${cat.name}`">✎</button>
+                        <button class="btn btn-sm btn-danger btn-icon"  @click="handleDelete('category', cat.id)" :disabled="isProcessing" title="Eliminar" :aria-label="`Eliminar categoría ${cat.name}`">✕</button>
+                      </div>
                     </template>
                     <template v-else>
-                      <button class="btn btn-sm btn-primary btn-icon" @click="handleSaveEdit('category', cat.id)" :disabled="isProcessing" aria-label="Guardar cambios">✓</button>
-                      <button class="btn btn-sm btn-secondary btn-icon" @click="cancelEdit" :disabled="isProcessing" aria-label="Cancelar edición">✕</button>
+                      <div class="flex-1 d-flex gap-2 flex-wrap">
+                        <input v-model.trim="editingData.name" class="form-control form-control-sm flex-1"
+                          :class="{ 'is-invalid': errors.editing }" style="min-width:140px"
+                          aria-label="Nombre de la categoría"
+                          @keyup.enter="handleSaveEdit('category', cat.id)"
+                          @keyup.esc="cancelEdit" />
+                        <select v-model.number="editingData.parentId" class="form-select form-select-sm" style="width:auto" aria-label="Dentro de" :disabled="isProcessing">
+                          <option value="">— Principal —</option>
+                          <option v-for="r in rootCategories.filter(r => r.id !== cat.id)" :key="r.id" :value="r.id">{{ r.name }}</option>
+                        </select>
+                        <select v-model.number="editingData.sizeTypeId" class="form-select form-select-sm" style="width:auto" aria-label="Tipo de talle" :disabled="isProcessing">
+                          <option value="">{{ editingData.parentId ? 'Igual que la principal' : 'Todos los talles' }}</option>
+                          <option v-for="t in sizeTypes" :key="t.id" :value="t.id">{{ t.name }}</option>
+                        </select>
+                        <span v-if="errors.editing" class="invalid-feedback d-block">{{ errors.editing }}</span>
+                      </div>
+                      <div class="list-item-actions">
+                        <button class="btn btn-sm btn-primary btn-icon" @click="handleSaveEdit('category', cat.id)" :disabled="isProcessing" aria-label="Guardar cambios">✓</button>
+                        <button class="btn btn-sm btn-secondary btn-icon" @click="cancelEdit" :disabled="isProcessing" aria-label="Cancelar edición">✕</button>
+                      </div>
                     </template>
                   </div>
-                </div>
+                </template>
               </div>
             </div>
           </div>
@@ -189,7 +224,13 @@
                       <select id="new-product-category" v-model.number="forms.product.categoryId" class="form-select"
                         :class="{ 'is-invalid': errors.productCategory }" :disabled="isProcessing">
                         <option value="" disabled>Seleccionar</option>
-                        <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+                        <template v-for="g in categoryTree" :key="g.id">
+                          <option v-if="!g.children.length" :value="g.id">{{ g.name }}</option>
+                          <optgroup v-else :label="g.name">
+                            <option v-for="c in g.children" :key="c.id" :value="c.id">{{ c.name }}</option>
+                            <option :value="g.id">{{ g.name }} (general)</option>
+                          </optgroup>
+                        </template>
                       </select>
                       <span v-if="errors.productCategory" class="invalid-feedback">{{ errors.productCategory }}</span>
                     </div>
@@ -279,7 +320,13 @@
                           <div class="col-md-5">
                             <select v-model.number="editingData.categoryId" class="form-select form-select-sm" aria-label="Categoría" :disabled="isProcessing">
                               <option value="" disabled>Categoría</option>
-                              <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+                              <template v-for="g in categoryTree" :key="g.id">
+                          <option v-if="!g.children.length" :value="g.id">{{ g.name }}</option>
+                          <optgroup v-else :label="g.name">
+                            <option v-for="c in g.children" :key="c.id" :value="c.id">{{ c.name }}</option>
+                            <option :value="g.id">{{ g.name }} (general)</option>
+                          </optgroup>
+                        </template>
                             </select>
                           </div>
                           <div class="col-md-5">
@@ -347,6 +394,43 @@
 
         <!-- ── TALLES ────────────────────────────────────── -->
         <div v-else-if="activeTab === 'sizes'" class="slide-up">
+          <!-- Tipos de talle -->
+          <div class="tac-card mb-3">
+            <div class="tac-card-header">
+              <h5>Tipos de talle</h5>
+            </div>
+            <div class="tac-card-body">
+              <form @submit.prevent="handleAddSizeType" class="section-form d-flex gap-2 align-items-end flex-wrap mb-3">
+                <div class="form-group flex-1">
+                  <label for="new-size-type-name">Nuevo tipo</label>
+                  <input id="new-size-type-name" v-model.trim="forms.sizeType.name" class="form-control"
+                    placeholder="Ej: Ropa, Calzado, Anzuelos, Tanzas..." :disabled="isProcessing" />
+                </div>
+                <button type="submit" class="btn btn-primary" :disabled="!forms.sizeType.name || isProcessing">+ Agregar</button>
+              </form>
+              <div class="sizes-grid">
+                <div v-for="t in sizeTypes" :key="t.id" class="size-item">
+                  <template v-if="editingId !== t.id || editingType !== 'sizeType'">
+                    <span class="size-label">{{ t.name }}</span>
+                    <span class="text-muted small">{{ sizesOfType(t.id).length }} talle(s)</span>
+                    <div class="d-flex gap-1">
+                      <button class="btn btn-sm btn-warning btn-icon" @click="startEdit('sizeType', t)" :disabled="isProcessing" :aria-label="`Editar tipo ${t.name}`">✎</button>
+                      <button class="btn btn-sm btn-danger btn-icon"  @click="handleDelete('sizeType', t.id)" :disabled="isProcessing" :aria-label="`Eliminar tipo ${t.name}`">✕</button>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <input v-model.trim="editingName" class="form-control form-control-sm" style="min-width:100px"
+                      aria-label="Nombre del tipo" @keyup.enter="handleSaveEdit('sizeType', t.id)" @keyup.esc="cancelEdit" :disabled="isProcessing" />
+                    <div class="d-flex gap-1">
+                      <button class="btn btn-sm btn-primary btn-icon"   @click="handleSaveEdit('sizeType', t.id)" :disabled="isProcessing" aria-label="Guardar cambios">✓</button>
+                      <button class="btn btn-sm btn-secondary btn-icon" @click="cancelEdit" :disabled="isProcessing" aria-label="Cancelar edición">✕</button>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="tac-card">
             <div class="tac-card-header">
               <h5>Talles</h5>
@@ -360,41 +444,58 @@
                   <label for="new-size-name">Nuevo talle</label>
                   <input id="new-size-name" v-model.trim="forms.size.name" class="form-control"
                     :class="{ 'is-invalid': errors.sizeName }"
-                    placeholder="Ej: S, M, L, XL, 38, 40..." :disabled="isProcessing" />
+                    placeholder="Ej: S, M, 40, 1/0, 0.30mm..." :disabled="isProcessing" />
                   <span v-if="errors.sizeName" class="invalid-feedback">{{ errors.sizeName }}</span>
+                </div>
+                <div class="form-group">
+                  <label for="new-size-type">Tipo</label>
+                  <select id="new-size-type" v-model.number="forms.size.sizeTypeId" class="form-select" :disabled="isProcessing">
+                    <option value="">Sin tipo (sirve para todo)</option>
+                    <option v-for="t in sizeTypes" :key="t.id" :value="t.id">{{ t.name }}</option>
+                  </select>
                 </div>
                 <button type="submit" class="btn btn-primary" :disabled="!forms.size.name || isProcessing">
                   <span v-if="isProcessing" class="spinner spinner-sm"></span>
                   <span v-else>+ Agregar</span>
                 </button>
               </form>
+              <p class="text-muted small mb-3">Los talles se muestran en el orden en que se cargan: cargalos de menor a mayor.</p>
 
-              <!-- Size chips grid -->
+              <!-- Size chips grid, agrupados por tipo -->
               <div v-if="filteredSizes.length === 0" class="empty-state">
                 <div class="empty-state-icon">◻</div>
                 <p>{{ sizes.length === 0 ? 'Sin talles' : 'Sin resultados' }}</p>
               </div>
 
-              <div v-else class="sizes-grid">
-                <div v-for="size in filteredSizes" :key="size.id" class="size-item">
-                  <template v-if="editingId !== size.id">
-                    <span class="size-label">{{ size.name }}</span>
-                    <div class="d-flex gap-1">
-                      <button class="btn btn-sm btn-warning btn-icon" @click="startEdit('size', size)" :disabled="isProcessing" :aria-label="`Editar talle ${size.name}`">✎</button>
-                      <button class="btn btn-sm btn-danger btn-icon"  @click="handleDelete('size', size.id)" :disabled="isProcessing" :aria-label="`Eliminar talle ${size.name}`">✕</button>
+              <div v-else>
+                <div v-for="group in sizeGroups" :key="group.key" class="mb-3">
+                  <div class="section-form-label mb-2">{{ group.name }}</div>
+                  <div class="sizes-grid">
+                    <div v-for="size in group.sizes" :key="size.id" class="size-item">
+                      <template v-if="editingId !== size.id || editingType !== 'size'">
+                        <span class="size-label">{{ size.name }}</span>
+                        <div class="d-flex gap-1">
+                          <button class="btn btn-sm btn-warning btn-icon" @click="startEdit('size', size)" :disabled="isProcessing" :aria-label="`Editar talle ${size.name}`">✎</button>
+                          <button class="btn btn-sm btn-danger btn-icon"  @click="handleDelete('size', size.id)" :disabled="isProcessing" :aria-label="`Eliminar talle ${size.name}`">✕</button>
+                        </div>
+                      </template>
+                      <template v-else>
+                        <input v-model.trim="editingName" class="form-control form-control-sm"
+                          style="min-width:80px"
+                          aria-label="Nombre del talle"
+                          @keyup.enter="handleSaveEdit('size', size.id)"
+                          @keyup.esc="cancelEdit" :disabled="isProcessing" />
+                        <select v-model.number="editingData.sizeTypeId" class="form-select form-select-sm" aria-label="Tipo de talle" :disabled="isProcessing">
+                          <option value="">Sin tipo</option>
+                          <option v-for="t in sizeTypes" :key="t.id" :value="t.id">{{ t.name }}</option>
+                        </select>
+                        <div class="d-flex gap-1">
+                          <button class="btn btn-sm btn-primary btn-icon"   @click="handleSaveEdit('size', size.id)" :disabled="isProcessing" aria-label="Guardar cambios">✓</button>
+                          <button class="btn btn-sm btn-secondary btn-icon" @click="cancelEdit" :disabled="isProcessing" aria-label="Cancelar edición">✕</button>
+                        </div>
+                      </template>
                     </div>
-                  </template>
-                  <template v-else>
-                    <input v-model.trim="editingName" class="form-control form-control-sm"
-                      style="min-width:80px"
-                      aria-label="Nombre del talle"
-                      @keyup.enter="handleSaveEdit('size', size.id)"
-                      @keyup.esc="cancelEdit" :disabled="isProcessing" />
-                    <div class="d-flex gap-1">
-                      <button class="btn btn-sm btn-primary btn-icon"   @click="handleSaveEdit('size', size.id)" :disabled="isProcessing" aria-label="Guardar cambios">✓</button>
-                      <button class="btn btn-sm btn-secondary btn-icon" @click="cancelEdit" :disabled="isProcessing" aria-label="Cancelar edición">✕</button>
-                    </div>
-                  </template>
+                  </div>
                 </div>
               </div>
             </div>
@@ -468,6 +569,7 @@ import { getAllProducts, addProduct, deleteProduct, editProduct, getArchivedProd
 import { getProductImages, saveProductImages } from '../services/productImageService'
 import ImageListEditor from './admin/ImageListEditor.vue'
 import { getAllSizes, addSize, deleteSize, editSize } from '../services/sizeService'
+import { getAllSizeTypes, saveSizeType, deleteSizeType } from '../services/sizeTypeService'
 import { register } from '../services/authService'
 
 export default {
@@ -476,11 +578,12 @@ export default {
   data() {
     return {
       activeTab: 'categories',
-      categories: [], products: [], sizes: [],
+      categories: [], products: [], sizes: [], sizeTypes: [],
       forms: {
-        category: { name: '' },
+        category: { name: '', parentId: '', sizeTypeId: '' },
+        sizeType: { name: '' },
         product: { name: '', price: '', priceCash: '', categoryId: '', description: '', images: [], published: false, weightKg: '' },
-        size: { name: '' },
+        size: { name: '', sizeTypeId: '' },
         user: { username: '', password: '', role: 'USER' }
       },
       editingId: null, editingType: null, editingName: '', editingData: {},
@@ -529,6 +632,22 @@ export default {
       const s = this.filters.sizeSearch.toLowerCase()
       return this.sizes.filter(sz => sz.name.toLowerCase().includes(s))
     },
+    // Talles agrupados por tipo, en el orden en que se cargaron
+    sizeGroups() {
+      const groups = this.sizeTypes.map(t => ({ key: t.id, name: t.name, sizes: this.filteredSizes.filter(sz => sz.sizeType?.id === t.id) }))
+      groups.push({ key: 'none', name: 'Sin tipo (sirve para cualquier categoría)', sizes: this.filteredSizes.filter(sz => !sz.sizeType) })
+      return groups.filter(g => g.sizes.length)
+    },
+    rootCategories() {
+      return this.categories.filter(c => !c.parent).sort((a, b) => a.name.localeCompare(b.name))
+    },
+    // Principales con sus subcategorías, ordenadas por nombre
+    categoryTree() {
+      return this.rootCategories.map(r => ({
+        ...r,
+        children: this.categories.filter(c => c.parent?.id === r.id).sort((a, b) => a.name.localeCompare(b.name))
+      }))
+    },
     canAddProduct() {
       return this.forms.product.name && this.forms.product.price >= 0 && this.forms.product.priceCash >= 0 && this.forms.product.categoryId
     }
@@ -541,7 +660,7 @@ export default {
   methods: {
     async initializeData() {
       this.isLoading = true
-      try { await Promise.all([this.fetchCategories(), this.fetchProducts(), this.fetchSizes()]) }
+      try { await Promise.all([this.fetchCategories(), this.fetchProducts(), this.fetchSizes(), this.fetchSizeTypes()]) }
       catch { this.showToast('error', 'Error al cargar datos') }
       finally { this.isLoading = false }
     },
@@ -550,16 +669,25 @@ export default {
     async fetchCategories() { this.categories = (await getAllCategories()).data || [] },
     async fetchProducts()   { this.products   = (await getAllProducts()).data   || [] },
     async fetchSizes()      { this.sizes       = (await getAllSizes()).data      || [] },
+    async fetchSizeTypes()  { this.sizeTypes   = (await getAllSizeTypes()).data  || [] },
+
+    sizesOfType(typeId) { return this.sizes.filter(sz => sz.sizeType?.id === typeId) },
+    sizeTypeLabel(cat) {
+      if (cat.sizeType) return cat.sizeType.name
+      const parent = cat.parent && this.categories.find(c => c.id === cat.parent.id)
+      if (parent?.sizeType) return `${parent.sizeType.name} (de ${parent.name})`
+      return 'Todos los talles'
+    },
 
     async handleAddCategory() {
       if (!this.forms.category.name) { this.errors.categoryName = 'Requerido'; return }
       this.isProcessing = true
       try {
-        await addCategory(this.forms.category.name)
-        this.forms.category.name = ''
+        await addCategory(this.forms.category)
+        this.forms.category = { name: '', parentId: '', sizeTypeId: '' }
         await this.fetchCategories()
         this.showToast('success', 'Categoría agregada')
-      } catch { this.showToast('error', 'Error al agregar') }
+      } catch (e) { this.showToast('error', e.response?.data?.message || 'Error al agregar') }
       finally { this.isProcessing = false }
     },
 
@@ -586,11 +714,23 @@ export default {
       if (!this.forms.size.name) { this.errors.sizeName = 'Requerido'; return }
       this.isProcessing = true
       try {
-        await addSize(this.forms.size.name)
+        await addSize(this.forms.size.name, this.forms.size.sizeTypeId || null)
         this.forms.size.name = ''
         await this.fetchSizes()
         this.showToast('success', 'Talle agregado')
-      } catch { this.showToast('error', 'Error al agregar') }
+      } catch (e) { this.showToast('error', e.response?.data?.message || 'Error al agregar') }
+      finally { this.isProcessing = false }
+    },
+
+    async handleAddSizeType() {
+      if (!this.forms.sizeType.name) return
+      this.isProcessing = true
+      try {
+        await saveSizeType({ name: this.forms.sizeType.name })
+        this.forms.sizeType.name = ''
+        await this.fetchSizeTypes()
+        this.showToast('success', 'Tipo de talle agregado')
+      } catch (e) { this.showToast('error', e.response?.data?.message || 'Error al agregar') }
       finally { this.isProcessing = false }
     },
 
@@ -602,6 +742,11 @@ export default {
           description: item.description || '', images: item.imageUrl ? [item.imageUrl] : [], published: item.published || false, weightKg: item.weightKg || ''
         }
         this.loadEditImages(item.id)
+      } else if (type === 'category') {
+        this.editingData = { name: item.name, parentId: item.parent?.id || '', sizeTypeId: item.sizeType?.id || '' }
+      } else if (type === 'size') {
+        this.editingName = item.name
+        this.editingData = { sizeTypeId: item.sizeType?.id || '' }
       } else {
         this.editingName = item.name
       }
@@ -623,9 +768,9 @@ export default {
       this.isProcessing = true
       try {
         if (type === 'category') {
-          if (!this.editingName.trim()) { this.errors.editing = 'Requerido'; return }
-          await editCategory(id, this.editingName)
-          await this.fetchCategories()
+          if (!this.editingData.name?.trim()) { this.errors.editing = 'Requerido'; return }
+          await editCategory({ id, ...this.editingData })
+          await Promise.all([this.fetchCategories(), this.fetchProducts()])
         } else if (type === 'product') {
           if (!this.editingData.name || !this.editingData.price || this.editingData.priceCash == null || !this.editingData.categoryId) {
             this.showToast('error', 'Complete todos los campos'); return
@@ -636,12 +781,16 @@ export default {
           await this.fetchProducts()
         } else if (type === 'size') {
           if (!this.editingName.trim()) { this.errors.editing = 'Requerido'; return }
-          await editSize(id, this.editingName)
+          await editSize(id, this.editingName, this.editingData.sizeTypeId || null)
           await this.fetchSizes()
+        } else if (type === 'sizeType') {
+          if (!this.editingName.trim()) { this.errors.editing = 'Requerido'; return }
+          await saveSizeType({ id, name: this.editingName })
+          await Promise.all([this.fetchSizeTypes(), this.fetchSizes(), this.fetchCategories()])
         }
         this.cancelEdit()
         this.showToast('success', 'Actualizado correctamente')
-      } catch { this.showToast('error', 'Error al actualizar') }
+      } catch (e) { this.showToast('error', e.response?.data?.message || 'Error al actualizar') }
       finally { this.isProcessing = false }
     },
 
@@ -652,8 +801,9 @@ export default {
         if (type === 'category') { await deleteCategory(id); await this.fetchCategories() }
         else if (type === 'product') { await deleteProduct(id); await this.fetchProducts() }
         else if (type === 'size') { await deleteSize(id); await this.fetchSizes() }
+        else if (type === 'sizeType') { await deleteSizeType(id); await this.fetchSizeTypes() }
         this.showToast('success', 'Eliminado')
-      } catch { this.showToast('error', 'Error al eliminar') }
+      } catch (e) { this.showToast('error', e.response?.data?.message || 'Error al eliminar') }
       finally { this.isProcessing = false }
     },
 
@@ -781,6 +931,8 @@ export default {
   gap: 0.65rem;
 }
 
+.category-child { padding-left: 2rem; }
+.category-branch { color: var(--text-muted); }
 .size-item {
   background: var(--bg-surface);
   border: 1px solid var(--border);

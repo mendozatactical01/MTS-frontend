@@ -30,10 +30,16 @@
                 <input type="radio" name="cat" value="" v-model="categoryFilter" />
                 <span>Todas</span>
               </label>
-              <label class="filter-option" v-for="cat in categories" :key="cat.id">
-                <input type="radio" name="cat" :value="cat.id" v-model="categoryFilter" />
-                <span>{{ cat.name }}</span>
-              </label>
+              <template v-for="group in categories" :key="group.id">
+                <label class="filter-option" :class="{ 'filter-group': group.children.length }">
+                  <input type="radio" name="cat" :value="group.id" v-model="categoryFilter" />
+                  <span>{{ group.name }}</span>
+                </label>
+                <label class="filter-option filter-child" v-for="cat in group.children" :key="cat.id">
+                  <input type="radio" name="cat" :value="cat.id" v-model="categoryFilter" />
+                  <span>{{ cat.name }}</span>
+                </label>
+              </template>
             </div>
           </fieldset>
 
@@ -84,6 +90,7 @@
 import StoreLayout from './StoreLayout.vue'
 import StoreProductCard from './StoreProductCard.vue'
 import { getPublishedProducts, getPublishedCombos } from '../../services/storeService'
+import { buildCategoryTree, productInCategory } from '../../utils/categoryTree'
 
 export default {
   name: 'StoreCatalog',
@@ -97,9 +104,7 @@ export default {
   },
   computed: {
     categories() {
-      const map = new Map()
-      this.products.forEach(p => { if (p.category) map.set(p.category.id, p.category) })
-      return [...map.values()]
+      return buildCategoryTree(this.products)
     },
     activeFilterCount() {
       let n = 0
@@ -109,7 +114,7 @@ export default {
     },
     filteredProducts() {
       let items = this.products
-      if (this.categoryFilter !== '') items = items.filter(p => p.category?.id === this.categoryFilter)
+      if (this.categoryFilter !== '') items = items.filter(p => productInCategory(p, this.categoryFilter))
       if (this.onlyAvailable) items = items.filter(p => p.available)
       if (this.search.trim()) {
         const q = this.search.trim().toLowerCase()
@@ -194,6 +199,8 @@ export default {
   font-size: 0.88rem; color: var(--text-secondary); cursor: pointer;
 }
 .filter-option:hover { color: var(--text-primary); }
+.filter-group { font-weight: 700; color: var(--text-primary); }
+.filter-child { padding-left: 1.4rem; }
 .filter-option input[type="radio"] { accent-color: var(--crimson); width: 15px; height: 15px; flex-shrink: 0; }
 
 .catalog-content { min-width: 0; }

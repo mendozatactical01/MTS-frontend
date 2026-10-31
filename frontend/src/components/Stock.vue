@@ -78,7 +78,7 @@
                 <label for="adjust-size">Talle</label>
                 <select id="adjust-size" v-model.number="adjustForm.sizeId" class="form-select" :disabled="isProcessing">
                   <option value="">Sin talle</option>
-                  <option v-for="s in filteredSizes" :key="s.id" :value="s.id">{{ s.name }}</option>
+                  <option v-for="s in sizesForProduct(adjustForm.productId)" :key="s.id" :value="s.id">{{ s.name }}</option>
                 </select>
               </div>
             </div>
@@ -164,7 +164,7 @@
                     <td>
                       <select v-model.number="row.sizeId" class="form-select form-select-sm" aria-label="Talle" :disabled="isBulkProcessing">
                         <option value="">Sin talle</option>
-                        <option v-for="s in sizes" :key="s.id" :value="s.id">{{ s.name }}</option>
+                        <option v-for="s in sizesForProduct(row.productId)" :key="s.id" :value="s.id">{{ s.name }}</option>
                       </select>
                     </td>
                     <td>
@@ -251,7 +251,7 @@
                   <thead>
                     <tr>
                       <th scope="col" style="min-width:180px">Producto</th>
-                      <th scope="col" v-for="size in filteredSizes" :key="size.id" class="text-center">{{ size.name }}</th>
+                      <th scope="col" v-for="size in blockSizes(prods)" :key="size.id" class="text-center">{{ size.name }}</th>
                       <th scope="col" class="text-center" style="width:80px">Total</th>
                       <th scope="col" class="text-center" style="width:70px">Ver</th>
                     </tr>
@@ -262,7 +262,7 @@
                         <div class="fw-bold">{{ prod.name }}</div>
                         <div style="font-size:.78rem;color:var(--text-muted)">${{ prod.price?.toFixed(2) }}</div>
                       </td>
-                      <td v-for="size in filteredSizes" :key="size.id" class="text-center">
+                      <td v-for="size in blockSizes(prods)" :key="size.id" class="text-center">
                         <span class="badge" :class="stockBadgeClass(prod.id, size.id)">
                           {{ getStockQty(prod.id, size.id) }}
                         </span>
@@ -340,7 +340,7 @@
                 <tr><th scope="col">Talle</th><th scope="col" class="text-center">Cantidad</th><th scope="col" class="text-center">Estado</th><th scope="col" class="text-center">Editar</th></tr>
               </thead>
               <tbody>
-                <tr v-for="size in sizes" :key="size.id">
+                <tr v-for="size in sizesForProduct(detailModal.product?.id)" :key="size.id">
                   <td>{{ size.name }}</td>
                   <td class="text-center">
                     <span class="badge" :class="stockBadgeClass(detailModal.product?.id, size.id)">{{ getStockQty(detailModal.product?.id, size.id) }}</span>
@@ -378,14 +378,14 @@
 import BaseLayout from './BaseLayout.vue'
 import { getAllStock, addStock, discountStock } from '../services/stockService'
 import { getAllProducts } from '../services/productService'
-import { getAllSizes } from '../services/sizeService'
+import { getAllSizes, getSizesByCategory } from '../services/sizeService'
 
 export default {
   name: 'Stock',
   components: { BaseLayout },
   data() {
     return {
-      stock: [], products: [], sizes: [],
+      stock: [], products: [], sizes: [], sizesByCategory: {},
       filters: { productSearch: '', sizeSearch: '', onlyLowStock: false },
       collapsedCategories: {},
       adjustForm: { productId: '', sizeId: '', quantity: 1, action: 'add' },
@@ -412,11 +412,12 @@ export default {
       let list = this.filteredProducts
       if (this.filters.onlyLowStock) list = list.filter(p => this.productTotal(p.id) <= 6)
       list.forEach(p => {
-        const cat = p.category?.name || 'Sin categoría'
+        const cat = this.categoryLabel(p.category)
         if (!g[cat]) g[cat] = []
         g[cat].push(p)
       })
-      return g
+      // Orden alfabético: así las subcategorías de un mismo grupo quedan juntas
+      return Object.fromEntries(Object.entries(g).sort(([a], [b]) => a.localeCompare(b)))
     },
     stockStats() {
       const totalUnits = this.stock.reduce((sum, i) => sum + (i.quantity || 0), 0)
@@ -472,7 +473,29 @@ export default {
     },
     async fetchStock()    { this.stock    = (await getAllStock()).data    || [] },
     async fetchProducts() { this.products = (await getAllProducts()).data || [] },
-    async fetchSizes()    { this.sizes    = (await getAllSizes()).data    || [] },
+    async fetchSizes() {
+      const [all, byCategory] = await Promise.all([getAllSizes(), getSizesByCategory()])
+      this.sizes = all.data || []
+      this.sizesByCategory = byCategory.data || {}
+    },
+    categoryLabel(category) {
+      if (!category) return 'Sin categoría'
+      return category.parent ? `${category.parent.name} › ${category.name}` : category.name
+    },
+    // Talles que corresponden a la categoría del producto, más los que ya tengan stock cargado
+    sizesForProduct(productId) {
+      const product = this.products.find(p => p.id === productId)
+      if (!product) return []
+      const allowed = new Set((this.sizesByCategory[product.category?.id] || this.sizes).map(sz => sz.id))
+      this.stock.forEach(st => { if (st.product?.id === productId && st.size) allowed.add(st.size.id) })
+      return this.sizes.filter(sz => allowed.has(sz.id))
+    },
+    // Columnas de la grilla de una categoría (respeta el filtro de talle)
+    blockSizes(prods) {
+      const ids = new Set()
+      prods.forEach(p => this.sizesForProduct(p.id).forEach(sz => ids.add(sz.id)))
+      return this.filteredSizes.filter(sz => ids.has(sz.id))
+    },
 
     getStockQty(productId, sizeId) {
       const item = this.stock.find(s => s.product?.id === productId &&
