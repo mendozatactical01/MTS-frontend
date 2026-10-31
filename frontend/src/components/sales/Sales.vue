@@ -190,8 +190,74 @@
             </div>
           </div>
 
+          <!-- Agregar combo -->
+          <div v-if="combos.length" class="section-form mb-2">
+            <div class="section-form-label">Agregar combo</div>
+            <div class="row g-2 align-items-end">
+              <div class="col-md-3">
+                <div class="form-group">
+                  <label for="combo-select">Combo</label>
+                  <select id="combo-select" v-model.number="comboForm.comboId" class="form-select" :disabled="isProcessing">
+                    <option value="">Seleccionar combo</option>
+                    <option v-for="c in combos" :key="c.id" :value="c.id">{{ c.name }}{{ c.published ? '' : ' (no publicado)' }}</option>
+                  </select>
+                </div>
+              </div>
+              <template v-if="selectedCombo">
+                <div class="col-md-2">
+                  <div class="form-group">
+                    <label for="combo-quantity">Cantidad</label>
+                    <input id="combo-quantity" v-model.number="comboForm.quantity" type="number" min="1" class="form-control" :disabled="isProcessing" />
+                  </div>
+                </div>
+                <div class="col-md-2">
+                  <div class="form-group">
+                    <label for="combo-price">Precio combo *</label>
+                    <div class="input-group">
+                      <span class="input-group-text" aria-hidden="true">$</span>
+                      <input id="combo-price" v-model.number="comboForm.unitPrice" type="number" min="0" step="0.01" class="form-control" :disabled="isProcessing" />
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-2">
+                  <div class="form-group">
+                    <label id="combo-delivery-label">Entrega</label>
+                    <button type="button" class="btn w-100" :class="comboForm.deliverNow ? 'btn-success-soft' : 'btn-warning-soft'"
+                      @click="comboForm.deliverNow = !comboForm.deliverNow" :disabled="isProcessing"
+                      :aria-pressed="comboForm.deliverNow" aria-labelledby="combo-delivery-label">
+                      {{ comboForm.deliverNow ? '✓ Ahora' : '⏳ Pendiente' }}
+                    </button>
+                  </div>
+                </div>
+                <div class="col-md-1">
+                  <button type="button" class="btn btn-primary w-100" @click="handleAddCombo" :disabled="!canAddCombo || isProcessing" aria-label="Agregar combo">+</button>
+                </div>
+              </template>
+            </div>
+
+            <!-- Qué lleva el combo: elegir opción y talle en cada lugar -->
+            <div v-if="selectedCombo" class="combo-slots mt-2">
+              <div v-for="slot in selectedCombo.items" :key="slot.id" class="combo-slot">
+                <span class="combo-slot-name">{{ slotLabel(slot) }}<span v-if="slot.quantity > 1"> ×{{ slot.quantity }}</span></span>
+                <select v-if="slot.options.length > 1" v-model.number="comboForm.choices[slot.id].productId"
+                  class="form-select form-select-sm" :aria-label="`Opción para ${slotLabel(slot)}`" :disabled="isProcessing"
+                  @change="comboForm.choices[slot.id].sizeId = ''">
+                  <option value="">Elegir opción</option>
+                  <option v-for="o in slot.options" :key="o.productId" :value="o.productId">{{ o.productName }}</option>
+                </select>
+                <select v-if="chosenOption(slot)?.sizes?.length" v-model.number="comboForm.choices[slot.id].sizeId"
+                  class="form-select form-select-sm" :aria-label="`Talle para ${slotLabel(slot)}`" :disabled="isProcessing">
+                  <option value="">Talle</option>
+                  <option v-for="z in chosenOption(slot).sizes" :key="z.id" :value="z.id" :disabled="comboForm.deliverNow && !z.available">
+                    {{ z.name }}{{ z.available ? '' : ' (sin stock)' }}
+                  </option>
+                </select>
+              </div>
+            </div>
+          </div>
+
           <!-- Items table -->
-          <div v-if="saleForm.items.length > 0" class="table-responsive">
+          <div v-if="saleForm.items.length > 0 || saleForm.combos.length > 0" class="table-responsive">
             <table class="tac-table">
               <thead>
                 <tr>
@@ -225,6 +291,25 @@
                     <button class="btn btn-sm btn-danger btn-icon" @click="removeItem(idx)" :disabled="isProcessing" :aria-label="`Quitar ${getProductName(item.productId)}`">✕</button>
                   </td>
                 </tr>
+                <tr v-for="(c, idx) in saleForm.combos" :key="'combo-' + idx">
+                  <td>
+                    <span class="chip chip-combo">Combo</span> <span class="fw-bold">{{ c.name }}</span>
+                    <div class="combo-detail">{{ c.detail }}</div>
+                  </td>
+                  <td>—</td>
+                  <td class="text-center">{{ c.quantity }}</td>
+                  <td class="text-end">${{ c.unitPrice.toFixed(2) }}</td>
+                  <td class="text-end fw-bold">${{ (c.quantity * c.unitPrice).toFixed(2) }}</td>
+                  <td class="text-center">
+                    <button type="button" class="btn btn-sm" :class="c.deliverNow ? 'btn-success-soft' : 'btn-warning-soft'"
+                      @click="c.deliverNow = !c.deliverNow" :disabled="isProcessing" :aria-pressed="c.deliverNow" :aria-label="`Entrega de ${c.name}`">
+                      {{ c.deliverNow ? '✓ Ahora' : '⏳ Pendiente' }}
+                    </button>
+                  </td>
+                  <td class="text-center">
+                    <button class="btn btn-sm btn-danger btn-icon" @click="saleForm.combos.splice(idx, 1)" :disabled="isProcessing" :aria-label="`Quitar ${c.name}`">✕</button>
+                  </td>
+                </tr>
               </tbody>
               <tfoot>
                 <tr v-if="saleForm.discount > 0">
@@ -242,7 +327,7 @@
               </tfoot>
             </table>
           </div>
-          <div v-else class="tac-alert tac-alert-info">Sin ítems. Agregá al menos un producto para continuar.</div>
+          <div v-else class="tac-alert tac-alert-info">Sin ítems. Agregá al menos un producto o combo para continuar.</div>
         </div>
       </div>
 
@@ -317,7 +402,10 @@
               <tbody>
                 <tr v-for="sale in sales" :key="sale.id">
                   <td style="white-space:nowrap"><small>{{ formatDateTime(sale.saleDate) }}</small></td>
-                  <td class="fw-bold">{{ sale.customerName }}</td>
+                  <td class="fw-bold">
+                    {{ sale.customerName }}
+                    <span v-if="sale.channel === 'ONLINE'" class="chip chip-online" title="Venta de la tienda online">Online</span>
+                  </td>
                   <td>
                     <span v-if="sale.customerIdentification" class="badge badge-steel">{{ sale.customerIdentification }}</span>
                     <span v-else class="text-muted">—</span>
@@ -638,6 +726,7 @@ import { getAllSales, getTodaySales, getSalesByDate, createSale, searchSalesByNa
 import { getAllProducts } from '@/services/productService'
 import { getAllSizes, getSizesByCategory } from '@/services/sizeService'
 import { getAllStock }    from '@/services/stockService'
+import { getAllCombos }   from '@/services/comboService'
 
 export default {
   name: 'Sales',
@@ -647,7 +736,9 @@ export default {
       activeTab: 'sales',
       sales: [], products: [], sizes: [], sizesByCategory: {}, stock: [],
       pendingSales: [], isPendingLoading: false,
-      saleForm: { customerName: '', customerIdentification: '', observations: '', discount: 0, paymentMethod: 'EFECTIVO', items: [] },
+      saleForm: { customerName: '', customerIdentification: '', observations: '', discount: 0, paymentMethod: 'EFECTIVO', items: [], combos: [] },
+      combos: [],
+      comboForm: { comboId: '', quantity: 1, unitPrice: 0, deliverNow: true, choices: {} },
       itemForm: { productId: '', sizeId: '', quantity: 1, unitPrice: 0, deliverNow: true },
       productSearch: '', showProductDropdown: false,
       salesFilters: { timeFilter: 'today', specificDate: '', searchType: '', searchValue: '' },
@@ -670,7 +761,21 @@ export default {
       return this.getStockQty(this.itemForm.productId, this.itemForm.sizeId || null)
     },
     itemSubtotal() { return ((this.itemForm.quantity || 0) * (this.itemForm.unitPrice || 0)).toFixed(2) },
-    subtotal() { return this.saleForm.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0) },
+    subtotal() {
+      return this.saleForm.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0)
+        + this.saleForm.combos.reduce((s, c) => s + c.quantity * c.unitPrice, 0)
+    },
+    selectedCombo() { return this.combos.find(c => c.id === this.comboForm.comboId) || null },
+    // Cada lugar del combo con opción elegida (si hay varias) y talle (si el producto tiene talles)
+    canAddCombo() {
+      const combo = this.selectedCombo
+      if (!combo || !(this.comboForm.quantity >= 1) || !(this.comboForm.unitPrice >= 0)) return false
+      return combo.items.every(slot => {
+        const option = this.chosenOption(slot)
+        if (!option) return false
+        return !option.sizes?.length || !!this.comboForm.choices[slot.id]?.sizeId
+      })
+    },
     total() { const r = this.subtotal - (this.saleForm.discount || 0); return r >= 0 ? r : 0 },
     canAddItem() {
       if (!this.itemForm.productId || this.itemForm.quantity <= 0 || this.itemForm.unitPrice < 0) return false
@@ -678,7 +783,7 @@ export default {
       return true
     },
     canSubmitSale() {
-      return this.saleForm.customerName.trim() !== '' && this.saleForm.items.length > 0 && this.total >= 0
+      return this.saleForm.customerName.trim() !== '' && (this.saleForm.items.length > 0 || this.saleForm.combos.length > 0) && this.total >= 0
     },
     salesSummary() {
       const t = this.sales.reduce((s, x) => s + (x.total || 0), 0)
@@ -725,6 +830,19 @@ export default {
         if (p) return { ...item, unitPrice: val === 'TARJETA' ? p.price : (p.priceCash ?? p.price) }
         return item
       })
+      if (this.selectedCombo) this.comboForm.unitPrice = this.comboPrice(this.selectedCombo)
+      this.saleForm.combos = this.saleForm.combos.map(c => {
+        const combo = this.combos.find(x => x.id === c.comboId)
+        return combo ? { ...c, unitPrice: this.comboPrice(combo) } : c
+      })
+    },
+    'comboForm.comboId'() {
+      const combo = this.selectedCombo
+      const choices = {}
+      combo?.items.forEach(slot => {
+        choices[slot.id] = { productId: slot.options.length === 1 ? slot.options[0].productId : '', sizeId: '' }
+      })
+      this.comboForm = { ...this.comboForm, quantity: 1, unitPrice: combo ? this.comboPrice(combo) : 0, choices }
     },
     'salesFilters.searchValue'(val) {
       clearTimeout(this._searchTimeout)
@@ -764,7 +882,7 @@ export default {
     },
     async initializeData() {
       this.isLoading = true
-      try { await Promise.all([this.fetchProducts(), this.fetchSizes(), this.fetchStock(), this.fetchSales(), this.fetchPendingSales()]) }
+      try { await Promise.all([this.fetchProducts(), this.fetchSizes(), this.fetchStock(), this.fetchSales(), this.fetchPendingSales(), this.fetchCombos()]) }
       catch { this.showToast('error', 'Error al cargar datos') }
       finally { this.isLoading = false }
     },
@@ -784,6 +902,33 @@ export default {
       return this.sizes.filter(sz => allowed.has(sz.id))
     },
     async fetchStock()    { try { this.stock = (await getAllStock()).data || [] } catch { this.stock = [] } },
+    async fetchCombos()   { try { this.combos = (await getAllCombos()).data || [] } catch { this.combos = [] } },
+    comboPrice(combo) { return this.saleForm.paymentMethod === 'TARJETA' ? combo.price : (combo.priceCash ?? combo.price) },
+    slotLabel(slot) { return slot.label || slot.options[0]?.productName || 'Producto' },
+    chosenOption(slot) {
+      const id = this.comboForm.choices[slot.id]?.productId
+      return slot.options.find(o => o.productId === id) || null
+    },
+    handleAddCombo() {
+      if (!this.canAddCombo) return
+      const combo = this.selectedCombo
+      const selections = combo.items.map(slot => ({
+        comboItemId: slot.id,
+        productId: this.comboForm.choices[slot.id].productId,
+        sizeId: this.comboForm.choices[slot.id].sizeId || null
+      }))
+      const detail = combo.items.map(slot => {
+        const option = this.chosenOption(slot)
+        const size = option.sizes?.find(z => z.id === this.comboForm.choices[slot.id].sizeId)
+        return `${option.productName}${size ? ' (' + size.name + ')' : ''}${slot.quantity > 1 ? ' ×' + slot.quantity : ''}`
+      }).join(' · ')
+      this.saleForm.combos.push({
+        comboId: combo.id, name: combo.name, detail, selections,
+        quantity: this.comboForm.quantity, unitPrice: Number(this.comboForm.unitPrice), deliverNow: this.comboForm.deliverNow
+      })
+      this.comboForm = { comboId: '', quantity: 1, unitPrice: 0, deliverNow: true, choices: {} }
+      this.showToast('success', 'Combo agregado')
+    },
     async fetchSales() {
       this.isLoading = true
       try {
@@ -826,15 +971,20 @@ export default {
       if (!this.canSubmitSale) return
       this.isProcessing = true
       try {
-        await createSale({ ...this.saleForm, paymentMethod: this.saleForm.paymentMethod, items: this.saleForm.items.map(i => ({ ...i, sizeId: i.sizeId || null, unitPrice: Number(i.unitPrice) })) })
+        await createSale({
+          ...this.saleForm,
+          items: this.saleForm.items.map(i => ({ ...i, sizeId: i.sizeId || null, unitPrice: Number(i.unitPrice) })),
+          combos: this.saleForm.combos.map(c => ({ comboId: c.comboId, quantity: c.quantity, unitPrice: Number(c.unitPrice), deliverNow: c.deliverNow, selections: c.selections }))
+        })
         this.showToast('success', '¡Venta registrada!')
         this.resetSaleForm()
-        await this.fetchSales(); await this.fetchStock()
+        await Promise.all([this.fetchSales(), this.fetchStock(), this.fetchCombos()])
       } catch (e) { this.showToast('error', e.response?.data?.message || 'Error al registrar venta') }
       finally { this.isProcessing = false }
     },
     resetSaleForm() {
-      this.saleForm = { customerName: '', customerIdentification: '', observations: '', discount: 0, paymentMethod: 'EFECTIVO', items: [] }
+      this.saleForm = { customerName: '', customerIdentification: '', observations: '', discount: 0, paymentMethod: 'EFECTIVO', items: [], combos: [] }
+      this.comboForm = { comboId: '', quantity: 1, unitPrice: 0, deliverNow: true, choices: {} }
       this.itemForm = { productId: '', sizeId: '', quantity: 1, unitPrice: 0, deliverNow: true }
       this.productSearch = ''
       this.errors = {}
@@ -1018,6 +1168,13 @@ export default {
 @media (max-width: 480px) {
   .kpi-grid { grid-template-columns: 1fr; }
 }
+.combo-slots { display: flex; flex-direction: column; gap: 0.4rem; }
+.combo-slot { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.combo-slot .form-select { width: auto; min-width: 140px; }
+.combo-slot-name { min-width: 140px; font-weight: 600; font-size: 0.88rem; }
+.combo-detail { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.15rem; }
+.chip-combo { background: rgba(201, 125, 44, 0.15); color: var(--amber-light); }
+.chip-online { margin-left: 0.35rem; background: rgba(59, 130, 246, 0.15); color: #60a5fa; font-size: 0.7rem; }
 .section-form-label {
   font-size: .75rem; font-family: var(--font-display); letter-spacing: .06em;
   text-transform: uppercase; color: var(--text-muted); margin-bottom: .4rem;
