@@ -40,7 +40,7 @@
           <input v-model="filters.search" class="form-control search-input" placeholder="Buscar producto o categoría..." aria-label="Buscar producto o categoría" />
           <button v-if="filters.search" class="search-clear" @click="filters.search = ''" aria-label="Limpiar búsqueda">✕</button>
         </div>
-        <select v-model.number="filters.categoryId" class="form-select stock-toolbar-category" aria-label="Filtrar por categoría">
+        <select v-model="filters.categoryId" class="form-select stock-toolbar-category" aria-label="Filtrar por categoría">
           <option value="">Todas las categorías</option>
           <template v-for="g in categoryTree" :key="g.id">
             <option :value="g.id">{{ g.children.length ? `${g.name} (todo)` : g.name }}</option>
@@ -364,6 +364,7 @@ import { getStockPage, getProductStock, getStockSummary } from '../services/stoc
 import { getAllProducts } from '../services/productService'
 import { getAllSizes, getSizesByCategory } from '../services/sizeService'
 import { getAllCategories } from '../services/categoryService'
+import { groupCategories } from '../utils/categoryTree'
 
 const PAGE_SIZE = 20
 
@@ -416,10 +417,7 @@ export default {
       })
       return groups
     },
-    categoryTree() {
-      const roots = this.categories.filter(c => !c.parent).sort((a, b) => a.name.localeCompare(b.name))
-      return roots.map(r => ({ ...r, children: this.categories.filter(c => c.parent?.id === r.id).sort((a, b) => a.name.localeCompare(b.name)) }))
-    },
+    categoryTree() { return groupCategories(this.categories) },
     adjustSizeCells() { return (this.adjustRow?.cells || []).filter(c => c.sizeId != null) },
     currentStock() {
       if (!this.adjustForm.productId || !this.adjustRow) return '-'
