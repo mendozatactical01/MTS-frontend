@@ -208,7 +208,7 @@
                         <span class="input-group-text" aria-hidden="true">$</span>
                         <input id="new-product-price" v-model.number="forms.product.price" class="form-control"
                           :class="{ 'is-invalid': errors.productPrice }"
-                          type="number" min="0" step="0.01" placeholder="0.00" :disabled="isProcessing" />
+                          type="number" min="0" step="0.01" placeholder="0.00" :disabled="isProcessing" @focus="$event.target.select()" />
                       </div>
                       <span v-if="errors.productPrice" class="invalid-feedback d-block">{{ errors.productPrice }}</span>
                     </div>
@@ -220,7 +220,7 @@
                         <span class="input-group-text" aria-hidden="true">$</span>
                         <input id="new-product-price-cash" v-model.number="forms.product.priceCash" class="form-control"
                           :class="{ 'is-invalid': errors.productPriceCash }"
-                          type="number" min="0" step="0.01" placeholder="0.00" :disabled="isProcessing" />
+                          type="number" min="0" step="0.01" placeholder="0.00" :disabled="isProcessing" @focus="$event.target.select()" />
                       </div>
                       <span v-if="errors.productPriceCash" class="invalid-feedback d-block">{{ errors.productPriceCash }}</span>
                     </div>
@@ -311,13 +311,13 @@
                           <div class="col-md-2">
                             <div class="input-group">
                               <span class="input-group-text" aria-hidden="true">$</span>
-                              <input v-model.number="editingData.price" class="form-control form-control-sm" type="number" min="0" step="0.01" placeholder="Tarjeta" aria-label="Precio con tarjeta" :disabled="isProcessing" />
+                              <input v-model.number="editingData.price" class="form-control form-control-sm" type="number" min="0" step="0.01" placeholder="Tarjeta" aria-label="Precio con tarjeta" :disabled="isProcessing" @focus="$event.target.select()" />
                             </div>
                           </div>
                           <div class="col-md-2">
                             <div class="input-group">
                               <span class="input-group-text" aria-hidden="true">$</span>
-                              <input v-model.number="editingData.priceCash" class="form-control form-control-sm" type="number" min="0" step="0.01" placeholder="Efectivo" aria-label="Precio en efectivo" :disabled="isProcessing" />
+                              <input v-model.number="editingData.priceCash" class="form-control form-control-sm" type="number" min="0" step="0.01" placeholder="Efectivo" aria-label="Precio en efectivo" :disabled="isProcessing" @focus="$event.target.select()" />
                             </div>
                           </div>
                           <div class="col-md-5">
@@ -618,7 +618,8 @@ export default {
         .map(g => ({ ...g, categories: g.categories.sort(byName) }))
     },
     canAddProduct() {
-      return this.forms.product.name && this.forms.product.price >= 0 && this.forms.product.priceCash >= 0 && this.forms.product.categoryId
+      const { price, priceCash } = this.forms.product
+      return this.forms.product.name && price !== '' && price >= 0 && priceCash !== '' && priceCash >= 0 && this.forms.product.categoryId
     }
   },
   watch: {
@@ -722,7 +723,7 @@ export default {
       this.editingId = item.id; this.editingType = type
       if (type === 'product') {
         this.editingData = {
-          name: item.name, price: item.price, priceCash: item.priceCash, categoryId: item.category?.id || '',
+          name: item.name, price: item.price || '', priceCash: item.priceCash || '', categoryId: item.category?.id || '',
           description: item.description || '', images: item.imageUrl ? [item.imageUrl] : [], published: item.published || false, weightKg: item.weightKg || ''
         }
         this.loadEditImages(item.id)
@@ -756,7 +757,7 @@ export default {
           await editCategory({ id, ...this.editingData })
           await Promise.all([this.fetchCategories(), this.fetchProducts()])
         } else if (type === 'product') {
-          if (!this.editingData.name || !this.editingData.price || this.editingData.priceCash == null || !this.editingData.categoryId) {
+          if (!this.editingData.name || !this.editingData.price || this.editingData.priceCash == null || this.editingData.priceCash === '' || !this.editingData.categoryId) {
             this.showToast('error', 'Complete todos los campos'); return
           }
           const { images, ...product } = this.editingData

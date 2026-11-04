@@ -65,11 +65,8 @@
             <div class="col-md-3">
               <div class="form-group">
                 <label for="adjust-product">Producto *</label>
-                <select id="adjust-product" v-model.number="adjustForm.productId" class="form-select"
-                  :class="{ 'is-invalid': errors.product }" :disabled="isProcessing">
-                  <option value="" disabled>Seleccionar</option>
-                  <option v-for="p in products" :key="p.id" :value="p.id">{{ p.name }}</option>
-                </select>
+                <ProductPicker input-id="adjust-product" v-model="adjustForm.productId" :products="products"
+                  :invalid="!!errors.product" :disabled="isProcessing" />
                 <span v-if="errors.product" class="invalid-feedback">{{ errors.product }}</span>
               </div>
             </div>
@@ -77,7 +74,7 @@
               <div class="form-group">
                 <label for="adjust-size">Talle</label>
                 <select id="adjust-size" v-model.number="adjustForm.sizeId" class="form-select" :disabled="isProcessing">
-                  <option value="">Sin talle</option>
+                  <option v-if="adjustAllowsNoSize" value="">Sin talle</option>
                   <option v-for="c in adjustSizeCells" :key="c.sizeId" :value="c.sizeId">{{ c.sizeName }}</option>
                 </select>
               </div>
@@ -96,7 +93,7 @@
                 <input id="adjust-quantity" v-model.number="adjustForm.quantity" type="number" min="1" class="form-control"
                   :class="{ 'is-invalid': errors.quantity }"
                   :max="adjustForm.action === 'discount' ? (typeof currentStock === 'number' ? currentStock : undefined) : undefined"
-                  placeholder="1" :disabled="!adjustForm.productId || isProcessing" />
+                  placeholder="1" :disabled="!adjustForm.productId || isProcessing" @focus="$event.target.select()" />
                 <span v-if="errors.quantity" class="invalid-feedback">{{ errors.quantity }}</span>
               </div>
             </div>
@@ -132,7 +129,7 @@
           <span v-if="bulkLoad.rows.length" class="badge badge-neutral">{{ bulkLoad.rows.length }} fila(s)</span>
         </div>
         <div class="tac-card-body" style="padding-bottom:.5rem">
-          <div v-if="bulkLoad.rows.length" class="table-responsive mb-2">
+          <div v-if="bulkLoad.rows.length" class="table-responsive bulk-table-wrap mb-2">
             <table class="tac-table">
               <thead>
                 <tr>
@@ -146,20 +143,18 @@
               <tbody>
                 <tr v-for="(row, i) in bulkLoad.rows" :key="i" :class="row.status === 'ok' ? 'bulk-row-ok' : row.status === 'error' ? 'bulk-row-error' : ''">
                   <td>
-                    <select v-model.number="row.productId" class="form-select form-select-sm" aria-label="Producto" :disabled="isBulkProcessing">
-                      <option value="" disabled>Seleccionar producto</option>
-                      <option v-for="p in products" :key="p.id" :value="p.id">{{ p.name }}</option>
-                    </select>
+                    <ProductPicker :model-value="row.productId" @update:model-value="setBulkProduct(row, $event)"
+                      :products="products" small :disabled="isBulkProcessing" />
                   </td>
                   <td>
                     <select v-model.number="row.sizeId" class="form-select form-select-sm" aria-label="Talle" :disabled="isBulkProcessing">
-                      <option value="">Sin talle</option>
+                      <option v-if="!sizesForProduct(row.productId).length" value="">Sin talle</option>
                       <option v-for="s in sizesForProduct(row.productId)" :key="s.id" :value="s.id">{{ s.name }}</option>
                     </select>
                   </td>
                   <td>
                     <input v-model.number="row.quantity" type="number" min="1" class="form-control form-control-sm"
-                      aria-label="Cantidad" :disabled="isBulkProcessing" placeholder="1" />
+                      aria-label="Cantidad" :disabled="isBulkProcessing" placeholder="1" @focus="$event.target.select()" />
                   </td>
                   <td class="text-center">
                     <span v-if="row.status === null" style="color:var(--text-muted)">—</span>
@@ -287,7 +282,7 @@
               <div class="tac-alert tac-alert-info mb-3">Stock actual: <strong>{{ cellModal.current }}</strong></div>
               <div class="form-group mb-2">
                 <label for="cell-new-quantity">Nueva cantidad *</label>
-                <input id="cell-new-quantity" v-model.number="cellModal.newQuantity" type="number" min="0" class="form-control"
+                <input id="cell-new-quantity" v-model.number="cellModal.newQuantity" type="number" min="0" class="form-control" placeholder="0"
                   :class="{ 'is-invalid': errors.cellEditor }" :aria-describedby="errors.cellEditor ? 'cell-editor-error' : null" required :disabled="isProcessing" ref="cellInput" />
                 <span v-if="errors.cellEditor" id="cell-editor-error" class="invalid-feedback">{{ errors.cellEditor }}</span>
                 <div style="font-size:.78rem;color:var(--text-muted);margin-top:.25rem">Ingresá la cantidad final deseada</div>
@@ -359,6 +354,7 @@
 
 <script>
 import BaseLayout from './BaseLayout.vue'
+import ProductPicker from './ProductPicker.vue'
 import { addStock, discountStock } from '../services/stockService'
 import { getStockPage, getProductStock, getStockSummary } from '../services/stockPageService'
 import { getAllProducts } from '../services/productService'
@@ -370,7 +366,7 @@ const PAGE_SIZE = 20
 
 export default {
   name: 'Stock',
-  components: { BaseLayout },
+  components: { BaseLayout, ProductPicker },
   data() {
     return {
       page: { content: [], page: 0, totalPages: 1, totalElements: 0 },
@@ -419,6 +415,10 @@ export default {
     },
     categoryTree() { return groupCategories(this.categories) },
     adjustSizeCells() { return (this.adjustRow?.cells || []).filter(c => c.sizeId != null) },
+    // "Sin talle" solo se ofrece si el producto no usa talles o ya tiene stock cargado sin talle
+    adjustAllowsNoSize() {
+      return !this.adjustSizeCells.length || (this.adjustRow?.cells || []).some(c => c.sizeId == null)
+    },
     currentStock() {
       if (!this.adjustForm.productId || !this.adjustRow) return '-'
       return this.cellOf(this.adjustRow, this.adjustForm.sizeId || null)?.quantity ?? 0
@@ -427,8 +427,8 @@ export default {
       return this.adjustForm.productId && this.adjustForm.quantity > 0 &&
         (this.adjustForm.action === 'add' || (typeof this.currentStock === 'number' && this.currentStock >= this.adjustForm.quantity))
     },
-    cellDiff() { return this.cellModal.newQuantity - this.cellModal.current },
-    canSaveCellEdit() { return this.cellModal.newQuantity >= 0 && this.cellDiff !== 0 },
+    cellDiff() { return this.cellModal.newQuantity === '' ? 0 : this.cellModal.newQuantity - this.cellModal.current },
+    canSaveCellEdit() { return this.cellModal.newQuantity !== '' && this.cellModal.newQuantity >= 0 && this.cellDiff !== 0 },
     canApplyBulk() { return this.bulkLoad.rows.length > 0 && this.bulkLoad.rows.every(r => r.productId && r.quantity >= 1) },
     bulkSummary() {
       const processed = this.bulkLoad.rows.filter(r => r.status !== null)
@@ -448,7 +448,7 @@ export default {
     'adjustForm.productId'(id) {
       this.adjustForm.sizeId = ''
       this.adjustRow = null
-      if (id) this.fetchAdjustRow()
+      if (id) this.fetchAdjustRow(true)
     }
   },
   mounted() {
@@ -498,11 +498,14 @@ export default {
       finally { if (seq === this._pageSeq) this.isLoading = false }
     },
     async fetchSummary() { this.summary = (await getStockSummary()).data || this.summary },
-    async fetchAdjustRow() {
+    async fetchAdjustRow(pickFirstSize = false) {
       const id = this.adjustForm.productId
       try {
         const { data } = await getProductStock(id)
-        if (this.adjustForm.productId === id) this.adjustRow = data
+        if (this.adjustForm.productId !== id) return
+        this.adjustRow = data
+        // Al elegir producto arranca en el primer talle de su lista
+        if (pickFirstSize) this.adjustForm.sizeId = this.adjustSizeCells[0]?.sizeId ?? ''
       } catch { this.adjustRow = null }
     },
     goToPage(n) {
@@ -585,9 +588,9 @@ export default {
     openCellModal(row, cell) {
       this.cellModal = {
         show: true, productId: row.productId, productName: row.name,
-        sizeId: cell.sizeId ?? null, sizeName: cell.sizeName, current: cell.quantity, newQuantity: cell.quantity
+        sizeId: cell.sizeId ?? null, sizeName: cell.sizeName, current: cell.quantity, newQuantity: cell.quantity || ''
       }
-      this.$nextTick(() => this.$refs.cellInput?.focus())
+      this.$nextTick(() => this.$refs.cellInput?.select())
     },
     closeCellModal() {
       if (this.isProcessing) return
@@ -596,6 +599,7 @@ export default {
     },
     async handleSaveCellEdit() {
       const { productId, sizeId, newQuantity } = this.cellModal
+      if (newQuantity === '') { this.errors.cellEditor = 'Ingresá una cantidad'; return }
       if (newQuantity < 0) { this.errors.cellEditor = 'No puede ser negativo'; return }
       if (this.cellDiff === 0) { this.closeCellModal(); return }
       this.isProcessing = true
@@ -609,6 +613,10 @@ export default {
       finally { this.isProcessing = false }
     },
 
+    setBulkProduct(row, productId) {
+      row.productId = productId
+      row.sizeId = this.sizesForProduct(productId)[0]?.id ?? ''
+    },
     addBulkRow() { this.bulkLoad.rows.push({ productId: '', sizeId: '', quantity: 1, status: null, error: '' }) },
     removeBulkRow(i) { this.bulkLoad.rows.splice(i, 1) },
     clearBulkLoad() { this.bulkLoad.rows = [] },
@@ -688,6 +696,7 @@ export default {
   pointer-events: none;
   line-height: 1;
 }
+.bulk-table-wrap { overflow: visible; }
 .search-input { padding-left: 1.75rem !important; padding-right: 1.75rem !important; }
 .search-clear {
   position: absolute;
