@@ -116,6 +116,7 @@
 </template>
 
 <script>
+import { confirmar } from '@/services/confirmDialog'
 import BaseLayout from '../BaseLayout.vue'
 import { getAllZones, addZone, editZone, deleteZone } from '../../services/shippingZoneService'
 
@@ -172,7 +173,7 @@ export default {
       }
     },
     async handleDelete(zone) {
-      if (!confirm(`¿Eliminar la zona "${zone.provinceName}"?`)) return
+      if (!(await confirmar({ title: 'Eliminar zona de envío', message: `¿Eliminar la zona "${zone.provinceName}"?`, confirmText: 'Eliminar', danger: true }))) return
       try {
         await deleteZone(zone.id)
         this.zones = this.zones.filter(z => z.id !== zone.id)

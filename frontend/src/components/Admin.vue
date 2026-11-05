@@ -532,6 +532,7 @@
 </template>
 
 <script>
+import { confirmar } from '@/services/confirmDialog'
 import BaseLayout from './BaseLayout.vue'
 import { getAllCategories, getCategorySections, addCategory, deleteCategory, editCategory } from '../services/categoryService'
 import { getAllProducts, addProduct, deleteProduct, editProduct, getArchivedProducts, restoreProduct } from '../services/productService'
@@ -780,7 +781,8 @@ export default {
     },
 
     async handleDelete(type, id) {
-      if (!confirm('¿Confirmar eliminación?')) return
+      const label = { category: 'la categoría', product: 'el producto', size: 'el talle', sizeType: 'la lista de talles' }[type] || 'el elemento'
+      if (!(await confirmar({ title: 'Confirmar eliminación', message: `¿Eliminar ${label}?`, confirmText: 'Eliminar', danger: true }))) return
       this.isProcessing = true
       try {
         if (type === 'category') { await deleteCategory(id); await this.fetchCategories() }
@@ -793,7 +795,7 @@ export default {
     },
 
     async handleDeleteProduct(prod) {
-      if (!confirm(`¿Eliminar "${prod.name}"?\n\nSi tiene ventas registradas se archiva en vez de borrarse (lo podés restaurar desde "Ver archivados").`)) return
+      if (!(await confirmar({ title: 'Eliminar producto', message: `¿Eliminar "${prod.name}"?\n\nSi tiene ventas registradas se archiva en vez de borrarse (lo podés restaurar desde "Ver archivados").`, confirmText: 'Eliminar', danger: true }))) return
       this.isProcessing = true
       try {
         const { data } = await deleteProduct(prod.id)

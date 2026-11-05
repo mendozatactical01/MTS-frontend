@@ -724,6 +724,7 @@
 </template>
 
 <script>
+import { confirmar } from '@/services/confirmDialog'
 import BaseLayout from '@/components/BaseLayout.vue'
 import { getAllSales, getTodaySales, getSalesByDate, createSale, searchSalesByName, searchSalesByIdentification, updateSale, deleteSale, deliverItem, getPendingSales } from '@/services/saleService'
 import { getAllProducts } from '@/services/productService'
@@ -1014,7 +1015,7 @@ export default {
       try {
         await deleteSale(this.deleteModal.sale.id)
         this.showToast('success', 'Venta eliminada correctamente')
-        this.closeDeleteModal()
+        this.deleteModal = { show: false, sale: null }
         await this.fetchSales()
         await this.fetchStock()
       } catch (e) {
@@ -1034,11 +1035,14 @@ export default {
       }))
       cloned.discount = cloned.discount || 0
       cloned.paymentMethod = cloned.paymentMethod || 'EFECTIVO'
-      this.editModal = { show: true, sale: cloned, originalSale: JSON.parse(JSON.stringify(sale)), newItem: { productId: '', sizeId: '', quantity: 1, unitPrice: 0 } }
+      this.editModal = { show: true, sale: cloned, initial: JSON.stringify(cloned), originalSale: JSON.parse(JSON.stringify(sale)), newItem: { productId: '', sizeId: '', quantity: 1, unitPrice: 0 } }
     },
-    cancelEdit() {
-      if (!this.isProcessing && confirm('¿Descartar cambios?'))
-        this.editModal = { show: false, sale: null, originalSale: null, newItem: { productId: '', sizeId: '', quantity: 1, unitPrice: 0 } }
+    async cancelEdit() {
+      if (this.isProcessing) return
+      // Solo pregunta si se tocó algo
+      const changed = JSON.stringify(this.editModal.sale) !== this.editModal.initial
+      if (changed && !(await confirmar({ title: 'Descartar cambios', message: 'Los cambios en esta venta no se van a guardar.', confirmText: 'Descartar', cancelText: 'Seguir editando', danger: true }))) return
+      this.editModal = { show: false, sale: null, originalSale: null, newItem: { productId: '', sizeId: '', quantity: 1, unitPrice: 0 } }
     },
     handleAddEditItem() {
       const i = this.editModal.newItem

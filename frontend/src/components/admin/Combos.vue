@@ -166,6 +166,7 @@
 </template>
 
 <script>
+import { confirmar } from '@/services/confirmDialog'
 import BaseLayout from '../BaseLayout.vue'
 import { getAllCombos, addCombo, editCombo, deleteCombo } from '../../services/comboService'
 import { getAllProducts } from '../../services/productService'
@@ -316,7 +317,7 @@ export default {
       }
     },
     async handleDelete(combo) {
-      if (!confirm(`¿Eliminar el combo "${combo.name}"?`)) return
+      if (!(await confirmar({ title: 'Eliminar combo', message: `¿Eliminar el combo "${combo.name}"?`, confirmText: 'Eliminar', danger: true }))) return
       try {
         await deleteCombo(combo.id)
         this.combos = this.combos.filter(c => c.id !== combo.id)
