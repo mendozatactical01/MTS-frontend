@@ -630,19 +630,16 @@
               <hr class="divider" />
 
               <div class="section-form-label mb-2">Ítems</div>
-              <div class="table-responsive mb-3">
+              <div class="table-responsive mb-3" style="overflow:visible">
                 <table class="tac-table">
                   <thead>
                     <tr><th scope="col">Producto</th><th scope="col">Talle</th><th scope="col">Cant.</th><th scope="col">Precio</th><th scope="col" class="text-end">Subtotal</th><th scope="col"></th></tr>
                   </thead>
                   <tbody>
                     <tr v-for="(item, idx) in editModal.sale.items" :key="idx">
-                      <td>
-                        <select v-model.number="item.productId" class="form-select form-select-sm" aria-label="Producto" :disabled="isProcessing">
-                          <option value="" disabled>Seleccionar</option>
-                          <option v-for="p in products" :key="p.id" :value="p.id">{{ p.name }}</option>
-                          <option v-if="item.productId && !products.some(p => p.id === item.productId)" :value="item.productId">{{ item.productName || 'Producto' }} (archivado)</option>
-                        </select>
+                      <td style="min-width:220px">
+                        <ProductPicker v-model="item.productId" :products="productsForEdit(item)" small
+                          aria-label="Producto" :disabled="isProcessing" />
                       </td>
                       <td>
                         <select v-model.number="item.sizeId" class="form-select form-select-sm" aria-label="Talle" :disabled="isProcessing">
@@ -669,10 +666,8 @@
                 <div class="section-form-label mb-2">Agregar ítem</div>
                 <div class="row g-2 align-items-end">
                   <div class="col-md-4">
-                    <select v-model.number="editModal.newItem.productId" class="form-select form-select-sm" aria-label="Producto nuevo" :disabled="isProcessing">
-                      <option value="" disabled>Producto</option>
-                      <option v-for="p in products" :key="p.id" :value="p.id">{{ p.name }}</option>
-                    </select>
+                    <ProductPicker v-model="editModal.newItem.productId" :products="products" small
+                      aria-label="Producto nuevo" :disabled="isProcessing" />
                   </div>
                   <div class="col-md-2">
                     <select v-model.number="editModal.newItem.sizeId" class="form-select form-select-sm" aria-label="Talle nuevo" :disabled="isProcessing">
@@ -725,6 +720,7 @@
 
 <script>
 import { confirmar } from '@/services/confirmDialog'
+import ProductPicker from '../ProductPicker.vue'
 import BaseLayout from '@/components/BaseLayout.vue'
 import { getAllSales, getTodaySales, getSalesByDate, createSale, searchSalesByName, searchSalesByIdentification, updateSale, deleteSale, deliverItem, getPendingSales } from '@/services/saleService'
 import { getAllProducts } from '@/services/productService'
@@ -734,7 +730,7 @@ import { getAllCombos }   from '@/services/comboService'
 
 export default {
   name: 'Sales',
-  components: { BaseLayout },
+  components: { BaseLayout, ProductPicker },
   data() {
     return {
       activeTab: 'sales',
@@ -1050,6 +1046,11 @@ export default {
       this.editModal.sale.items.push({ id: null, productId: i.productId, sizeId: i.sizeId || null, quantity: i.quantity, unitPrice: Number(i.unitPrice) })
       this.editModal.newItem = { productId: '', sizeId: '', quantity: 1, unitPrice: 0 }
       this.showToast('success', 'Ítem agregado')
+    },
+    // Si el producto de la venta ya está archivado, se suma a la lista para que siga apareciendo su nombre
+    productsForEdit(item) {
+      if (!item.productId || this.products.some(p => p.id === item.productId)) return this.products
+      return [...this.products, { id: item.productId, name: `${item.productName || 'Producto'} (archivado)` }]
     },
     removeEditItem(idx) { this.editModal.sale.items.splice(idx, 1) },
     async handleSaveEdit() {
