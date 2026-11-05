@@ -324,6 +324,9 @@
                   <td colspan="4" class="text-end"><h5 class="mb-0">Total:</h5></td>
                   <td class="text-end"><h5 class="mb-0 text-success">${{ total.toFixed(2) }}</h5></td><td></td>
                 </tr>
+                <tr v-if="saleForm.paymentMethod === 'TARJETA'">
+                  <td colspan="6" class="text-end" style="color:var(--text-muted);font-size:.8rem">Se cobra a precio de tarjeta y la venta se registra a precio de efectivo.</td>
+                </tr>
               </tfoot>
             </table>
           </div>
@@ -817,8 +820,24 @@ export default {
     'itemForm.productId'(val) {
       if (val) {
         const p = this.products.find(x => x.id === val)
-        if (p) this.itemForm.unitPrice = this.salePrice(p)
+        if (p) this.itemForm.unitPrice = this.saleForm.paymentMethod === 'TARJETA' ? p.price : (p.priceCash ?? p.price)
       }
+    },
+    'saleForm.paymentMethod'(val) {
+      if (this.itemForm.productId) {
+        const p = this.products.find(x => x.id === this.itemForm.productId)
+        if (p) this.itemForm.unitPrice = val === 'TARJETA' ? p.price : (p.priceCash ?? p.price)
+      }
+      this.saleForm.items = this.saleForm.items.map(item => {
+        const p = this.products.find(x => x.id === item.productId)
+        if (p) return { ...item, unitPrice: val === 'TARJETA' ? p.price : (p.priceCash ?? p.price) }
+        return item
+      })
+      if (this.selectedCombo) this.comboForm.unitPrice = this.comboPrice(this.selectedCombo)
+      this.saleForm.combos = this.saleForm.combos.map(c => {
+        const combo = this.combos.find(x => x.id === c.comboId)
+        return combo ? { ...c, unitPrice: this.comboPrice(combo) } : c
+      })
     },
     'comboForm.comboId'() {
       const combo = this.selectedCombo
@@ -845,7 +864,8 @@ export default {
     'editModal.newItem.productId'(val) {
       if (val) {
         const p = this.products.find(x => x.id === val)
-        if (p) this.editModal.newItem.unitPrice = this.salePrice(p)
+        // La venta ya está guardada a precio de efectivo (aunque se haya pagado con tarjeta)
+        if (p) this.editModal.newItem.unitPrice = p.priceCash ?? p.price
       }
     }
   },
@@ -887,9 +907,7 @@ export default {
     },
     async fetchStock()    { try { this.stock = (await getAllStock()).data || [] } catch { this.stock = [] } },
     async fetchCombos()   { try { this.combos = (await getAllCombos()).data || [] } catch { this.combos = [] } },
-    // Las ventas se registran siempre al precio de efectivo, aunque se pague con tarjeta
-    salePrice(p) { return p.priceCash ?? p.price },
-    comboPrice(combo) { return this.salePrice(combo) },
+    comboPrice(combo) { return this.saleForm.paymentMethod === 'TARJETA' ? combo.price : (combo.priceCash ?? combo.price) },
     slotLabel(slot) { return slot.label || slot.options[0]?.productName || 'Producto' },
     chosenOption(slot) {
       const id = this.comboForm.choices[slot.id]?.productId
