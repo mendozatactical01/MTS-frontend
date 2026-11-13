@@ -1,5 +1,5 @@
 import httpPublic from './httpPublic'
-import { mockProducts, mockCombos, mockShippingZones, delay } from './mock/mockData'
+import { mockProducts, mockCombos, delay } from './mock/mockData'
 
 // Etapa A: mientras /api/store/** no existe todavía en el backend, estas
 // funciones devuelven fixtures con la misma forma que van a tener las
@@ -51,22 +51,25 @@ export function getPublishedComboById(id) {
   return httpPublic.get(`/api/store/combos/${id}`)
 }
 
-export function getShippingZones() {
-  if (USE_MOCK) {
-    return delay().then(() => ({ data: mockShippingZones.filter(z => z.active) }))
-  }
-  return httpPublic.get('/api/shipping-zones')
+// ── Envíos con Correo Argentino ──
+
+// [{ code: 'M', name: 'Mendoza' }, ...]
+export function getProvinces() {
+  return httpPublic.get('/api/store/shipping/provinces')
 }
 
-export function quoteShipping({ shippingZoneId, weightKg, subtotal }) {
-  if (USE_MOCK) {
-    return delay().then(() => {
-      const zone = mockShippingZones.find(z => z.id === Number(shippingZoneId))
-      if (!zone) return Promise.reject({ response: { status: 404 } })
-      const free = zone.freeShippingThreshold != null && subtotal >= zone.freeShippingThreshold
-      const cost = free ? 0 : zone.baseCost + zone.costPerExtraKg * Math.max(0, weightKg - 1)
-      return { data: { cost, estimatedDays: zone.estimatedDays, free } }
-    })
-  }
-  return httpPublic.post('/api/store/shipping/quote', { shippingZoneId, weightKg, subtotal })
+// items: los mismos del checkout (toCheckoutItems). Devuelve { options: [{ deliveryType: 'D'|'S',
+//   productType: 'CP'|'EP', name, price, daysMin, daysMax }] }
+export function quoteShipping({ postalCode, items }) {
+  return httpPublic.post('/api/store/shipping/quote', { postalCode, items })
+}
+
+// Sucursales de retiro: [{ code, name, address, locality, postalCode }], las del CP del cliente primero.
+export function getAgencies(provinceCode, postalCode) {
+  return httpPublic.get('/api/store/shipping/agencies', { params: { provinceCode, postalCode } })
+}
+
+// Cajas para cotizar: [{ code, label, lengthCm, widthCm, heightCm, defaultWeightG }]
+export function getPackageSizes() {
+  return httpPublic.get('/api/store/shipping/package-sizes')
 }

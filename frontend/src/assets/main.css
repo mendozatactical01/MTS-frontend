@@ -748,7 +748,7 @@ label { font-family: var(--font-display); font-weight: 600; letter-spacing: 0.05
 
 /* ── Responsive: primitivas compartidas (page-header, tabs, grid) ─
    Usado por todas las vistas del panel admin (Admin, Stock, Sales,
-   Statistics, Combos, ShippingZones, OnlineOrders). */
+   Statistics, Combos, OnlineOrders). */
 @media (max-width: 768px) {
   [class^="col-md-"], [class*=" col-md-"] { flex: 0 0 100%; max-width: 100%; }
 }

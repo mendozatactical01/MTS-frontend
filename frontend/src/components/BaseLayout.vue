@@ -30,9 +30,6 @@
         <router-link to="/admin/combos" class="nav-item" @click="sidebarOpen = false">
           <span class="nav-icon">▣</span><span>Combos</span>
         </router-link>
-        <router-link to="/admin/shipping-zones" class="nav-item" @click="sidebarOpen = false">
-          <span class="nav-icon">➤</span><span>Envíos</span>
-        </router-link>
         <router-link to="/admin/online-orders" class="nav-item" @click="sidebarOpen = false">
           <span class="nav-icon">⛁</span><span>Pedidos Online</span>
         </router-link>
@@ -100,7 +97,6 @@ export default {
         '/admin/sales': 'Ventas',
         '/admin/statistics': 'Estadísticas',
         '/admin/combos': 'Combos',
-        '/admin/shipping-zones': 'Zonas de Envío',
         '/admin/online-orders': 'Pedidos Online'
       }
       return t[this.$route?.path] || 'MTS'

@@ -124,16 +124,6 @@ export const mockCombos = [
   }
 ]
 
-export const mockShippingZones = [
-  { id: 1, provinceName: 'Mendoza',      baseCost: 0,    costPerExtraKg: 0,    freeShippingThreshold: null,  estimatedDays: '1-2', active: true },
-  { id: 2, provinceName: 'Buenos Aires', baseCost: 4500, costPerExtraKg: 900,  freeShippingThreshold: 100000, estimatedDays: '3-5', active: true },
-  { id: 3, provinceName: 'Córdoba',      baseCost: 4000, costPerExtraKg: 800,  freeShippingThreshold: 100000, estimatedDays: '3-4', active: true },
-  { id: 4, provinceName: 'Santa Fe',     baseCost: 4000, costPerExtraKg: 800,  freeShippingThreshold: 100000, estimatedDays: '3-4', active: true },
-  { id: 5, provinceName: 'San Juan',     baseCost: 3000, costPerExtraKg: 700,  freeShippingThreshold: 80000,  estimatedDays: '2-3', active: true },
-  { id: 6, provinceName: 'Neuquén',      baseCost: 5500, costPerExtraKg: 1100, freeShippingThreshold: null,   estimatedDays: '4-6', active: true },
-  { id: 7, provinceName: 'Salta',        baseCost: 6500, costPerExtraKg: 1300, freeShippingThreshold: null,   estimatedDays: '5-7', active: true }
-]
-
 export const mockOrders = [
   {
     id: 1,
@@ -147,7 +137,7 @@ export const mockOrders = [
     shippingNumber: '450',
     shippingCity: 'Ciudad de Mendoza',
     shippingPostalCode: '5500',
-    shippingZoneId: 1,
+    shippingProvinceCode: 'M',
     notes: '',
     subtotal: 76000,
     shippingCost: 0,

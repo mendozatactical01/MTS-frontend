@@ -32,10 +32,12 @@
         </div>
 
         <div class="tac-card">
-          <div class="tac-card-header"><h5>Envío a</h5></div>
+          <div class="tac-card-header"><h5>Envío</h5></div>
           <div class="tac-card-body">
+            <p v-if="order.shippingMethod"><strong>{{ order.shippingMethod }}</strong><template v-if="order.shippingDaysMin && order.shippingDaysMax"> · {{ order.shippingDaysMin }} a {{ order.shippingDaysMax }} días hábiles</template></p>
+            <p v-if="order.shippingAgencyAddress" class="text-muted">Sucursal: {{ order.shippingAgencyAddress }}</p>
             <p>{{ order.customerName }}</p>
-            <p class="text-muted">{{ order.shippingStreet }} {{ order.shippingNumber }}, {{ order.shippingCity }} (CP {{ order.shippingPostalCode }})</p>
+            <p class="text-muted">{{ order.shippingStreet }} {{ order.shippingNumber }}<template v-if="order.shippingFloor"> piso {{ order.shippingFloor }}</template><template v-if="order.shippingApartment"> depto {{ order.shippingApartment }}</template>, {{ order.shippingCity }}<template v-if="order.shippingProvinceName">, {{ order.shippingProvinceName }}</template> (CP {{ order.shippingPostalCode }})</p>
             <p class="text-muted">{{ order.customerEmail }} · {{ order.customerPhone }}</p>
           </div>
         </div>

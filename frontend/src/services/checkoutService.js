@@ -3,9 +3,22 @@ import { mockOrders, delay } from './mock/mockData'
 
 const USE_MOCK = false
 
+// Ítems del carrito en el formato que esperan el checkout y la cotización del envío.
+export function toCheckoutItems(cartItems) {
+  return cartItems.map(i => ({
+    itemType: i.type === 'combo' ? 'COMBO' : 'PRODUCT',
+    productId: i.type === 'combo' ? null : i.id,
+    comboId: i.type === 'combo' ? i.id : null,
+    sizeId: i.sizeId,
+    quantity: i.quantity,
+    selections: (i.selections || []).map(s => ({ comboItemId: s.comboItemId, productId: s.productId, sizeId: s.sizeId }))
+  }))
+}
+
 // checkoutRequest: { customerName, customerEmail, customerPhone, customerDni,
-//   shippingStreet, shippingNumber, shippingCity, shippingPostalCode,
-//   shippingZoneId, notes, items: [{ itemType, productId|comboId, sizeId, quantity }] }
+//   shippingStreet, shippingNumber, shippingFloor, shippingApartment, shippingCity, shippingPostalCode,
+//   shippingProvinceCode, shippingDeliveryType ('D'|'S'), shippingProductType ('CP'|'EP'),
+//   shippingAgencyCode (solo 'S'), notes, items: toCheckoutItems(...) }
 export function createOrder(checkoutRequest) {
   if (USE_MOCK) {
     return delay(400).then(() => {

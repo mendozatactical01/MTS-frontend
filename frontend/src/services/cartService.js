@@ -71,10 +71,6 @@ export function getSubtotal(items = getCart()) {
   return items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0)
 }
 
-export function getTotalWeight(items = getCart()) {
-  return items.reduce((sum, i) => sum + (i.weightKg || 0) * i.quantity, 0)
-}
-
 export function getCount(items = getCart()) {
   return items.reduce((sum, i) => sum + i.quantity, 0)
 }

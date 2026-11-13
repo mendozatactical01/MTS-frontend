@@ -26,6 +26,7 @@
                   <th scope="col" class="text-center">Estado</th>
                   <th scope="col" class="text-center">Total</th>
                   <th scope="col" class="text-center">Venta asociada</th>
+                  <th scope="col" class="text-center">Correo</th>
                   <th scope="col" class="text-center" style="width:70px">Ver</th>
                 </tr>
               </thead>
@@ -41,6 +42,11 @@
                     <router-link v-if="order.saleId" to="/admin/sales" class="badge badge-green" style="text-decoration:none">
                       Venta #{{ order.saleId }}
                     </router-link>
+                    <span v-else class="text-muted">—</span>
+                  </td>
+                  <td class="text-center">
+                    <span v-if="order.correoImportedAt" class="badge badge-green">Cargado</span>
+                    <span v-else-if="order.status === 'PAID' && order.shippingDeliveryType" class="badge badge-amber">Por cargar</span>
                     <span v-else class="text-muted">—</span>
                   </td>
                   <td class="text-center">
@@ -66,7 +72,9 @@
               <div class="col-6"><span style="color:var(--text-muted)">Estado:</span> <span class="badge" :class="statusBadge(detailModal.order?.status)">{{ statusLabel(detailModal.order?.status) }}</span></div>
               <div class="col-6"><span style="color:var(--text-muted)">Email:</span> {{ detailModal.order?.customerEmail }}</div>
               <div class="col-6"><span style="color:var(--text-muted)">Teléfono:</span> {{ detailModal.order?.customerPhone }}</div>
-              <div class="col-12"><span style="color:var(--text-muted)">Dirección:</span> {{ detailModal.order?.shippingStreet }} {{ detailModal.order?.shippingNumber }}, {{ detailModal.order?.shippingCity }} (CP {{ detailModal.order?.shippingPostalCode }})</div>
+              <div class="col-12"><span style="color:var(--text-muted)">Dirección:</span> {{ detailModal.order?.shippingStreet }} {{ detailModal.order?.shippingNumber }}<template v-if="detailModal.order?.shippingFloor"> piso {{ detailModal.order.shippingFloor }}</template><template v-if="detailModal.order?.shippingApartment"> depto {{ detailModal.order.shippingApartment }}</template>, {{ detailModal.order?.shippingCity }}<template v-if="detailModal.order?.shippingProvinceName">, {{ detailModal.order.shippingProvinceName }}</template> (CP {{ detailModal.order?.shippingPostalCode }})</div>
+              <div v-if="detailModal.order?.shippingMethod" class="col-12"><span style="color:var(--text-muted)">Envío:</span> {{ detailModal.order.shippingMethod }}<template v-if="detailModal.order.shippingAgencyAddress"> — {{ detailModal.order.shippingAgencyAddress }}</template></div>
+              <div v-if="detailModal.order?.packageWeightG" class="col-12"><span style="color:var(--text-muted)">Bulto cotizado:</span> {{ detailModal.order.packageLengthCm }}×{{ detailModal.order.packageWidthCm }}×{{ detailModal.order.packageHeightCm }} cm, {{ formatWeight(detailModal.order.packageWeightG) }}</div>
             </div>
             <div class="table-responsive">
             <table class="tac-table">
@@ -86,17 +94,28 @@
             </div>
           </div>
           <div class="tac-modal-footer">
+            <span v-if="detailModal.order?.correoImportedAt" class="text-muted" style="font-size:.85rem; margin-right:auto">Cargado en MiCorreo el {{ formatDate(detailModal.order.correoImportedAt) }}</span>
+            <button v-else-if="detailModal.order?.status === 'PAID' && detailModal.order?.shippingDeliveryType"
+              class="btn btn-primary" style="margin-right:auto" :disabled="importing" @click="handleImportToCorreo">
+              <span v-if="importing" class="spinner spinner-sm" aria-hidden="true"></span>
+              {{ importing ? 'Cargando…' : 'Cargar envío en MiCorreo' }}
+            </button>
             <button class="btn btn-secondary" @click="closeDetailModal">Cerrar</button>
           </div>
         </div>
       </div>
+
+      <transition name="toast">
+        <div v-if="toast.show" class="tac-toast" :class="`tac-toast-${toast.type}`" role="status" aria-live="polite">{{ toast.message }}</div>
+      </transition>
     </div>
   </BaseLayout>
 </template>
 
 <script>
 import BaseLayout from '../BaseLayout.vue'
-import { getAllOrders } from '../../services/onlineOrderService'
+import { getAllOrders, importOrderToCorreo } from '../../services/onlineOrderService'
+import { confirmar } from '@/services/confirmDialog'
 
 const STATUS_LABEL = {
   PENDING_PAYMENT: 'Esperando pago',
@@ -117,7 +136,11 @@ export default {
   name: 'OnlineOrders',
   components: { BaseLayout },
   data() {
-    return { orders: [], isLoading: true, detailModal: { show: false, order: null } }
+    return {
+      orders: [], isLoading: true, importing: false,
+      detailModal: { show: false, order: null },
+      toast: { show: false, type: 'success', message: '' }
+    }
   },
   async mounted() {
     this.isLoading = true
@@ -134,8 +157,37 @@ export default {
     formatDate(d) { return d ? new Date(d).toLocaleString('es-AR') : '' },
     statusLabel(s) { return STATUS_LABEL[s] || s },
     statusBadge(s) { return STATUS_BADGE[s] || 'badge-neutral' },
+    formatWeight(g) { return g >= 1000 ? `${(g / 1000).toLocaleString('es-AR')} kg` : `${g} g` },
     openDetailModal(order) { this.detailModal = { show: true, order } },
-    closeDetailModal() { this.detailModal = { show: false, order: null } }
+    closeDetailModal() {
+      if (this.importing) return
+      this.detailModal = { show: false, order: null }
+    },
+    async handleImportToCorreo() {
+      const order = this.detailModal.order
+      const ok = await confirmar({
+        title: 'Cargar envío en MiCorreo',
+        message: `Se va a crear el envío del pedido #${order.id} en la cuenta de MiCorreo. Después hay que pagarlo e imprimir el rótulo desde MiCorreo. ¿Continuar?`,
+        confirmText: 'Cargar envío'
+      })
+      if (!ok) return
+      this.importing = true
+      try {
+        const res = await importOrderToCorreo(order.id)
+        const idx = this.orders.findIndex(o => o.id === order.id)
+        if (idx !== -1) this.orders.splice(idx, 1, res.data)
+        this.detailModal.order = res.data
+        this.showToast('success', 'Envío cargado en MiCorreo')
+      } catch (e) {
+        this.showToast('error', e.response?.data?.message || 'No se pudo cargar el envío en MiCorreo')
+      } finally {
+        this.importing = false
+      }
+    },
+    showToast(type, message) {
+      this.toast = { show: true, type, message }
+      setTimeout(() => { this.toast.show = false }, 4000)
+    }
   }
 }
 </script>

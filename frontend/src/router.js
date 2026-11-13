@@ -8,7 +8,6 @@ import { isAuthenticated } from './services/authService'
 
 const Sales          = () => import('./components/sales/Sales.vue')
 const Combos         = () => import('./components/admin/Combos.vue')
-const ShippingZones  = () => import('./components/admin/ShippingZones.vue')
 const OnlineOrders   = () => import('./components/admin/OnlineOrders.vue')
 
 const StoreHome           = () => import('./components/store/StoreHome.vue')
@@ -39,7 +38,6 @@ const routes = [
   { path: '/admin/sales',          name: 'Sales',          component: Sales },
   { path: '/admin/statistics',     name: 'Statistics',     component: Statistics },
   { path: '/admin/combos',         name: 'Combos',         component: Combos },
-  { path: '/admin/shipping-zones', name: 'ShippingZones',  component: ShippingZones },
   { path: '/admin/online-orders',  name: 'OnlineOrders',   component: OnlineOrders }
 ]
 

@@ -18,3 +18,8 @@ export function getOrderById(id) {
   }
   return axios.get(`${API_URL}/${id}`)
 }
+
+// Carga el envío del pedido pagado en MiCorreo (Correo Argentino). Devuelve el pedido actualizado.
+export function importOrderToCorreo(id) {
+  return axios.post(`${API_URL}/${id}/correo-import`)
+}

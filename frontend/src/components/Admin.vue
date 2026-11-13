@@ -63,6 +63,13 @@
                   </select>
                 </div>
                 <div class="form-group">
+                  <label for="new-category-package">Caja de envío</label>
+                  <select id="new-category-package" v-model="forms.category.packageSize" class="form-select" :disabled="isProcessing">
+                    <option value="">{{ defaultPackageLabel }}</option>
+                    <option v-for="p in packageSizes" :key="p.code" :value="p.code">{{ packageLabel(p) }}</option>
+                  </select>
+                </div>
+                <div class="form-group">
                   <label for="new-category-section">Sección en la tienda</label>
                   <input id="new-category-section" v-model.trim="forms.category.section" list="category-sections" class="form-control"
                     placeholder="Ej: Pesca (opcional)" :disabled="isProcessing" />
@@ -95,6 +102,7 @@
                         <div class="d-flex align-items-center gap-2 flex-wrap">
                           <span class="list-item-name">{{ cat.name }}</span>
                           <span class="chip">{{ cat.sizeType ? cat.sizeType.name : 'Sin talle' }}</span>
+                          <span class="chip" title="Caja con la que se cotiza el envío">📦 {{ packageName(cat.packageSize) }}</span>
                         </div>
                         <div v-if="cat.sizeType" class="size-preview">{{ sizePreview(cat.sizeType.id) }}</div>
                       </div>
@@ -113,6 +121,10 @@
                         <select v-model.number="editingData.sizeTypeId" class="form-select form-select-sm" style="width:auto" aria-label="Talles" :disabled="isProcessing">
                           <option value="">Sin talle</option>
                           <option v-for="t in sizeTypes" :key="t.id" :value="t.id">{{ t.name }}</option>
+                        </select>
+                        <select v-model="editingData.packageSize" class="form-select form-select-sm" style="width:auto" aria-label="Caja de envío" :disabled="isProcessing">
+                          <option value="">{{ defaultPackageLabel }}</option>
+                          <option v-for="p in packageSizes" :key="p.code" :value="p.code">{{ packageLabel(p) }}</option>
                         </select>
                         <input v-model.trim="editingData.section" list="category-sections" class="form-control form-control-sm" style="width:auto; min-width:140px"
                           placeholder="Sección (opcional)" aria-label="Sección en la tienda" :disabled="isProcessing"
@@ -268,6 +280,15 @@
                     </div>
                   </div>
                   <div class="col-md-2">
+                    <div class="form-group">
+                      <label for="new-product-package">Caja de envío</label>
+                      <select id="new-product-package" v-model="forms.product.packageSize" class="form-select form-select-sm" :disabled="isProcessing">
+                        <option value="">La de la categoría</option>
+                        <option v-for="p in packageSizes" :key="p.code" :value="p.code">{{ p.label }}</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="col-md-2">
                     <div class="form-check" style="margin-top:1.6rem">
                       <input v-model="forms.product.published" type="checkbox" id="product-published" class="form-check-input" :disabled="isProcessing" />
                       <label for="product-published" class="form-check-label">Publicar en tienda</label>
@@ -337,6 +358,12 @@
                           </div>
                           <div class="col-md-2">
                             <input v-model.number="editingData.weightKg" type="number" min="0" step="0.1" class="form-control form-control-sm" placeholder="Peso (kg)" aria-label="Peso en kilogramos" :disabled="isProcessing" />
+                          </div>
+                          <div class="col-md-2">
+                            <select v-model="editingData.packageSize" class="form-select form-select-sm" aria-label="Caja de envío" :disabled="isProcessing">
+                              <option value="">Caja: la de la categoría</option>
+                              <option v-for="p in packageSizes" :key="p.code" :value="p.code">Caja {{ p.label }}</option>
+                            </select>
                           </div>
                           <div class="col-md-2">
                             <div class="form-check" style="margin-top:.4rem">
@@ -540,6 +567,7 @@ import { getProductImages, saveProductImages } from '../services/productImageSer
 import ImageListEditor from './admin/ImageListEditor.vue'
 import { getAllSizes, addSizes, moveSize, deleteSize, editSize } from '../services/sizeService'
 import { getAllSizeTypes, saveSizeType, deleteSizeType } from '../services/sizeTypeService'
+import { getPackageSizes } from '../services/storeService'
 import { register } from '../services/authService'
 
 export default {
@@ -548,11 +576,11 @@ export default {
   data() {
     return {
       activeTab: 'categories',
-      categories: [], sections: [], products: [], sizes: [], sizeTypes: [],
+      categories: [], sections: [], products: [], sizes: [], sizeTypes: [], packageSizes: [],
       forms: {
-        category: { name: '', section: '', sizeTypeId: '' },
+        category: { name: '', section: '', sizeTypeId: '', packageSize: '' },
         sizeType: { name: '' },
-        product: { name: '', price: '', priceCash: '', categoryId: '', description: '', images: [], published: false, weightKg: '' },
+        product: { name: '', price: '', priceCash: '', categoryId: '', description: '', images: [], published: false, weightKg: '', packageSize: '' },
         user: { username: '', password: '', role: 'USER' }
       },
       editingId: null, editingType: null, editingName: '', editingData: {},
@@ -567,6 +595,10 @@ export default {
     }
   },
   computed: {
+    defaultPackageLabel() {
+      const p = this.packageSizes.find(x => x.defaultSize)
+      return p ? `Por defecto (${p.label})` : 'Por defecto'
+    },
     filteredProducts() {
       const s = this.filters.productSearch.toLowerCase()
       return this.products.filter(p =>
@@ -631,7 +663,7 @@ export default {
   methods: {
     async initializeData() {
       this.isLoading = true
-      try { await Promise.all([this.fetchCategories(), this.fetchProducts(), this.fetchSizes(), this.fetchSizeTypes()]) }
+      try { await Promise.all([this.fetchCategories(), this.fetchProducts(), this.fetchSizes(), this.fetchSizeTypes(), this.fetchPackageSizes()]) }
       catch { this.showToast('error', 'Error al cargar datos') }
       finally { this.isLoading = false }
     },
@@ -645,6 +677,13 @@ export default {
     async fetchProducts()   { this.products   = (await getAllProducts()).data   || [] },
     async fetchSizes()      { this.sizes       = (await getAllSizes()).data      || [] },
     async fetchSizeTypes()  { this.sizeTypes   = (await getAllSizeTypes()).data  || [] },
+    async fetchPackageSizes() { this.packageSizes = (await getPackageSizes()).data || [] },
+    packageLabel(p) { return `${p.label} (${p.lengthCm}×${p.widthCm}×${p.heightCm} cm)` },
+    // Sin caja asignada se usa la de por defecto que informa el backend.
+    packageName(code) {
+      const p = this.packageSizes.find(x => x.code === code) || this.packageSizes.find(x => x.defaultSize)
+      return p ? p.label : ''
+    },
 
     sizesOfType(typeId) { return this.sizes.filter(sz => sz.sizeType?.id === typeId) },
     categoriesUsing(typeId) { return this.categories.filter(c => c.sizeType?.id === typeId).map(c => c.name).sort() },
@@ -660,7 +699,7 @@ export default {
       this.isProcessing = true
       try {
         await addCategory(this.forms.category)
-        this.forms.category = { name: '', section: '', sizeTypeId: '' }
+        this.forms.category = { name: '', section: '', sizeTypeId: '', packageSize: '' }
         await this.fetchCategories()
         this.showToast('success', 'Categoría agregada')
       } catch (e) { this.showToast('error', e.response?.data?.message || 'Error al agregar') }
@@ -676,9 +715,9 @@ export default {
       this.isProcessing = true
       try {
         const { images, ...product } = this.forms.product
-        const res = await addProduct({ ...product, imageUrl: images[0] || '' })
+        const res = await addProduct({ ...product, packageSize: product.packageSize || null, imageUrl: images[0] || '' })
         if (images.length) await saveProductImages(res.data.id, images)
-        this.forms.product = { name: '', price: '', priceCash: '', categoryId: '', description: '', images: [], published: false, weightKg: '' }
+        this.forms.product = { name: '', price: '', priceCash: '', categoryId: '', description: '', images: [], published: false, weightKg: '', packageSize: '' }
         await this.fetchProducts()
         this.showToast('success', 'Producto agregado')
       } catch { this.showToast('error', 'Error al agregar') }
@@ -725,11 +764,12 @@ export default {
       if (type === 'product') {
         this.editingData = {
           name: item.name, price: item.price || '', priceCash: item.priceCash || '', categoryId: item.category?.id || '',
-          description: item.description || '', images: item.imageUrl ? [item.imageUrl] : [], published: item.published || false, weightKg: item.weightKg || ''
+          description: item.description || '', images: item.imageUrl ? [item.imageUrl] : [], published: item.published || false, weightKg: item.weightKg || '',
+          packageSize: item.packageSize || ''
         }
         this.loadEditImages(item.id)
       } else if (type === 'category') {
-        this.editingData = { name: item.name, section: item.section || '', sizeTypeId: item.sizeType?.id || '' }
+        this.editingData = { name: item.name, section: item.section || '', sizeTypeId: item.sizeType?.id || '', packageSize: item.packageSize || '' }
       } else if (type === 'size') {
         this.editingName = item.name
         this.editingData = { sizeTypeId: item.sizeType?.id || '' }
@@ -762,7 +802,7 @@ export default {
             this.showToast('error', 'Complete todos los campos'); return
           }
           const { images, ...product } = this.editingData
-          await editProduct({ id, ...product, imageUrl: images[0] || '' })
+          await editProduct({ id, ...product, packageSize: product.packageSize || null, imageUrl: images[0] || '' })
           await saveProductImages(id, images)
           await this.fetchProducts()
         } else if (type === 'size') {
