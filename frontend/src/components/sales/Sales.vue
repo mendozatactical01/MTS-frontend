@@ -48,9 +48,55 @@
       <div class="tac-card mb-3">
         <div class="tac-card-header">
           <h5>Nueva Venta</h5>
-          <button type="button" class="btn btn-sm btn-secondary" @click="resetSaleForm" :disabled="isProcessing"><span aria-hidden="true">✕</span> Limpiar</button>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-secondary" @click="toggleQuickStock"
+              :aria-expanded="quickStock.open" aria-controls="quick-stock-panel">
+              <span aria-hidden="true">{{ quickStock.open ? '▴' : '▾' }}</span> Cargar stock
+            </button>
+            <button type="button" class="btn btn-sm btn-secondary" @click="resetSaleForm" :disabled="isProcessing"><span aria-hidden="true">✕</span> Limpiar</button>
+          </div>
         </div>
         <div class="tac-card-body">
+          <!-- Carga rápida de stock, sin salir de Ventas -->
+          <form v-if="quickStock.open" id="quick-stock-panel" class="section-form mb-3" @submit.prevent="handleQuickStock">
+            <div class="section-form-label">Cargar stock</div>
+            <div class="row g-2 align-items-end">
+              <div class="col-md-4">
+                <div class="form-group">
+                  <label for="quick-stock-product">Producto *</label>
+                  <ProductPicker input-id="quick-stock-product" :model-value="quickStock.productId" :products="products"
+                    :disabled="quickStock.saving" @update:model-value="setQuickStockProduct" />
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="form-group">
+                  <label for="quick-stock-size">Talle</label>
+                  <select id="quick-stock-size" v-model.number="quickStock.sizeId" class="form-select"
+                    :disabled="!quickStock.productId || quickStock.saving">
+                    <option v-if="!quickStockListedSizes.length" value="">Sin talle</option>
+                    <option v-for="s in quickStockSizes" :key="s.id" :value="s.id">{{ s.name }}</option>
+                  </select>
+                </div>
+              </div>
+              <div class="col-md-2">
+                <div class="form-group">
+                  <label for="quick-stock-quantity">Cantidad *</label>
+                  <input id="quick-stock-quantity" v-model.number="quickStock.quantity" type="number" min="1" step="1"
+                    class="form-control" :disabled="!quickStock.productId || quickStock.saving" />
+                </div>
+              </div>
+              <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100" :disabled="!canSaveQuickStock || quickStock.saving">
+                  <span v-if="quickStock.saving" class="spinner spinner-sm"></span>
+                  <span v-else>+ Sumar</span>
+                </button>
+              </div>
+            </div>
+            <div v-if="quickStock.productId" class="quick-stock-current" role="status">
+              Stock actual: <strong>{{ getStockQty(quickStock.productId, quickStock.sizeId || null) }}</strong>
+            </div>
+          </form>
+
           <div class="row g-2 mb-3">
             <div class="col-md-3">
               <div class="form-group">
@@ -725,22 +771,35 @@ import BaseLayout from '@/components/BaseLayout.vue'
 import { getAllSales, getTodaySales, getSalesByDate, createSale, searchSalesByName, searchSalesByIdentification, updateSale, deleteSale, deliverItem, getPendingSales } from '@/services/saleService'
 import { getAllProducts } from '@/services/productService'
 import { getAllSizes, getSizesByCategory } from '@/services/sizeService'
-import { getAllStock }    from '@/services/stockService'
+import { getAllStock, addStock } from '@/services/stockService'
 import { getAllCombos }   from '@/services/comboService'
+
+// La venta a medio cargar se guarda en este navegador para no perderla al cambiar de página.
+const DRAFT_KEY = 'mts_sale_draft'
+const emptySaleForm = () => ({ customerName: '', customerIdentification: '', observations: '', discount: 0, paymentMethod: 'EFECTIVO', items: [], combos: [] })
+const emptyComboForm = () => ({ comboId: '', quantity: 1, unitPrice: 0, deliverNow: true, choices: {} })
+const emptyItemForm = () => ({ productId: '', sizeId: '', quantity: 1, unitPrice: 0, deliverNow: true })
+
+function loadSaleDraft() {
+  try { return JSON.parse(localStorage.getItem(DRAFT_KEY)) } catch { return null }
+}
 
 export default {
   name: 'Sales',
   components: { BaseLayout, ProductPicker },
   data() {
+    const draft = loadSaleDraft()
     return {
       activeTab: 'sales',
       sales: [], products: [], sizes: [], sizesByCategory: {}, stock: [],
       pendingSales: [], isPendingLoading: false,
-      saleForm: { customerName: '', customerIdentification: '', observations: '', discount: 0, paymentMethod: 'EFECTIVO', items: [], combos: [] },
+      saleForm: { ...emptySaleForm(), ...draft?.saleForm },
       combos: [],
-      comboForm: { comboId: '', quantity: 1, unitPrice: 0, deliverNow: true, choices: {} },
-      itemForm: { productId: '', sizeId: '', quantity: 1, unitPrice: 0, deliverNow: true },
-      productSearch: '', showProductDropdown: false,
+      comboForm: { ...emptyComboForm(), ...draft?.comboForm },
+      itemForm: { ...emptyItemForm(), ...draft?.itemForm },
+      productSearch: draft?.productSearch || '', showProductDropdown: false,
+      draftRestored: !!draft,
+      quickStock: { open: false, productId: '', sizeId: '', quantity: 1, saving: false },
       salesFilters: { timeFilter: 'today', specificDate: '', searchType: '', searchValue: '' },
       editModal: { show: false, sale: null, originalSale: null, newItem: { productId: '', sizeId: '', quantity: 1, unitPrice: 0 } },
       deleteModal: { show: false, sale: null },
@@ -751,6 +810,18 @@ export default {
     }
   },
   computed: {
+    saleDraft() {
+      const { saleForm, itemForm, comboForm, productSearch } = this
+      const hasContent = saleForm.customerName || saleForm.customerIdentification || saleForm.observations
+        || saleForm.discount || saleForm.items.length || saleForm.combos.length
+        || itemForm.productId || comboForm.comboId || productSearch
+      return hasContent ? JSON.stringify({ saleForm, itemForm, comboForm, productSearch }) : null
+    },
+    quickStockSizes() {
+      return this.quickStockListedSizes.length ? this.quickStockListedSizes : this.sizesForProduct(this.quickStock.productId)
+    },
+    quickStockListedSizes() { return this.sizesForProduct(this.quickStock.productId).filter(s => s.sizeType) },
+    canSaveQuickStock() { return !!this.quickStock.productId && Number.isInteger(this.quickStock.quantity) && this.quickStock.quantity > 0 },
     filteredProducts() {
       const q = this.productSearch.trim().toLowerCase()
       if (!q) return this.products.slice(0, 8)
@@ -814,6 +885,12 @@ export default {
     }
   },
   watch: {
+    saleDraft(draft) {
+      try {
+        if (draft) localStorage.setItem(DRAFT_KEY, draft)
+        else localStorage.removeItem(DRAFT_KEY)
+      } catch { /* sin almacenamiento disponible: la venta sigue en pantalla */ }
+    },
     'itemForm.productId'(val) {
       if (val) {
         const p = this.products.find(x => x.id === val)
@@ -883,11 +960,23 @@ export default {
     },
     async initializeData() {
       this.isLoading = true
-      try { await Promise.all([this.fetchProducts(), this.fetchSizes(), this.fetchStock(), this.fetchSales(), this.fetchPendingSales(), this.fetchCombos()]) }
+      try {
+        await Promise.all([this.fetchProducts(), this.fetchSizes(), this.fetchStock(), this.fetchSales(), this.fetchPendingSales(), this.fetchCombos()])
+        if (this.draftRestored) this.showToast('success', 'Recuperamos la venta que estabas cargando')
+      }
       catch { this.showToast('error', 'Error al cargar datos') }
       finally { this.isLoading = false }
     },
-    async fetchProducts() { this.products = (await getAllProducts()).data || [] },
+    async fetchProducts() {
+      this.products = (await getAllProducts()).data || []
+      // Lo guardado en el borrador puede referirse a productos que ya no están
+      const exists = id => this.products.some(p => p.id === id)
+      this.saleForm.items = this.saleForm.items.filter(i => exists(i.productId))
+      if (this.itemForm.productId && !exists(this.itemForm.productId)) {
+        this.itemForm = emptyItemForm()
+        this.productSearch = ''
+      }
+    },
     async fetchSizes() {
       const [all, byCategory] = await Promise.all([getAllSizes(), getSizesByCategory()])
       this.sizes = all.data || []
@@ -903,7 +992,53 @@ export default {
       return this.sizes.filter(sz => allowed.has(sz.id))
     },
     async fetchStock()    { try { this.stock = (await getAllStock()).data || [] } catch { this.stock = [] } },
-    async fetchCombos()   { try { this.combos = (await getAllCombos()).data || [] } catch { this.combos = [] } },
+    async fetchCombos() {
+      try {
+        this.combos = (await getAllCombos()).data || []
+        this.syncCombosWithCatalog()
+      } catch { this.combos = [] }
+    },
+    // Mantiene lo elegido mientras siga existiendo en el combo (borrador recuperado o stock recién cargado)
+    syncCombosWithCatalog() {
+      this.saleForm.combos = this.saleForm.combos.filter(c => this.combos.some(x => x.id === c.comboId))
+      const combo = this.selectedCombo
+      if (!combo) {
+        if (this.comboForm.comboId) this.comboForm = emptyComboForm()
+        return
+      }
+      const choices = {}
+      combo.items.forEach(slot => {
+        const previous = this.comboForm.choices[slot.id]
+        const option = slot.options.find(o => o.productId === previous?.productId)
+          || (slot.options.length === 1 ? slot.options[0] : null)
+        const sizeId = option?.sizes?.some(z => z.id === previous?.sizeId) ? previous.sizeId : ''
+        choices[slot.id] = { productId: option?.productId ?? '', sizeId }
+      })
+      this.comboForm.choices = choices
+    },
+    toggleQuickStock() {
+      this.quickStock.open = !this.quickStock.open
+      if (this.quickStock.open && !this.quickStock.productId && this.itemForm.productId) {
+        this.setQuickStockProduct(this.itemForm.productId, this.itemForm.sizeId)
+      }
+    },
+    setQuickStockProduct(productId, sizeId = '') {
+      this.quickStock.productId = productId
+      const stocked = this.stock.find(s => s.product?.id === productId && s.size)
+      this.quickStock.sizeId = sizeId || this.quickStockListedSizes[0]?.id || stocked?.size.id || ''
+    },
+    async handleQuickStock() {
+      if (!this.canSaveQuickStock || this.quickStock.saving) return
+      const { productId, sizeId, quantity } = this.quickStock
+      this.quickStock.saving = true
+      try {
+        await addStock(productId, sizeId || null, quantity)
+        await Promise.all([this.fetchStock(), this.fetchCombos()])
+        this.quickStock.quantity = 1
+        this.showToast('success', `Stock cargado: +${quantity}`)
+      } catch (e) { this.showToast('error', e.response?.data?.message || 'Error al cargar stock') }
+      finally { this.quickStock.saving = false }
+    },
     comboPrice(combo) { return this.saleForm.paymentMethod === 'TARJETA' ? combo.price : (combo.priceCash ?? combo.price) },
     slotLabel(slot) { return slot.label || slot.options[0]?.productName || 'Producto' },
     chosenOption(slot) {
@@ -984,9 +1119,9 @@ export default {
       finally { this.isProcessing = false }
     },
     resetSaleForm() {
-      this.saleForm = { customerName: '', customerIdentification: '', observations: '', discount: 0, paymentMethod: 'EFECTIVO', items: [], combos: [] }
-      this.comboForm = { comboId: '', quantity: 1, unitPrice: 0, deliverNow: true, choices: {} }
-      this.itemForm = { productId: '', sizeId: '', quantity: 1, unitPrice: 0, deliverNow: true }
+      this.saleForm = emptySaleForm()
+      this.comboForm = emptyComboForm()
+      this.itemForm = emptyItemForm()
       this.productSearch = ''
       this.errors = {}
     },
@@ -1177,6 +1312,7 @@ export default {
 @media (max-width: 480px) {
   .kpi-grid { grid-template-columns: 1fr; }
 }
+.quick-stock-current { margin-top: 0.4rem; font-size: 0.8rem; color: var(--text-muted); }
 .combo-slots { display: flex; flex-direction: column; gap: 0.4rem; }
 .combo-slot { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 .combo-slot .form-select { width: auto; min-width: 140px; }

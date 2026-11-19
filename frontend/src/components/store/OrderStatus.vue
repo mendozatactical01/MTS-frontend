@@ -14,7 +14,7 @@
           <span class="status-icon" aria-hidden="true">{{ statusIcon }}</span>
           <div>
             <h1>{{ statusLabel }}</h1>
-            <p>Pedido #{{ order.id }} · {{ formatDate(order.createdAt) }}</p>
+            <p>{{ formatDate(order.createdAt) }}</p>
           </div>
         </div>
 

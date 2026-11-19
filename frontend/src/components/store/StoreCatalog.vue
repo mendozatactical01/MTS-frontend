@@ -54,23 +54,25 @@
         </aside>
 
         <div class="catalog-content">
-          <div v-if="filteredCombos.length" class="catalog-group">
-            <h2 class="catalog-group-title">Combos</h2>
+          <div class="catalog-toolbar">
+            <label for="catalog-sort">Ordenar por</label>
+            <select id="catalog-sort" v-model="sortOption" class="form-select form-select-sm catalog-sort">
+              <option value="name-asc">Nombre: A-Z</option>
+              <option value="name-desc">Nombre: Z-A</option>
+              <option value="price-desc">Precio: mayor a menor</option>
+              <option value="price-asc">Precio: menor a mayor</option>
+            </select>
+          </div>
+
+          <div v-if="sortedCombos.length" class="catalog-group">
+            <h2 class="catalog-group-title">Combos <span class="catalog-count">({{ sortedCombos.length }})</span></h2>
             <div class="product-grid">
-              <StoreProductCard v-for="combo in filteredCombos" :key="'combo-'+combo.id" :item="combo" combo />
+              <StoreProductCard v-for="combo in sortedCombos" :key="'combo-'+combo.id" :item="combo" combo />
             </div>
           </div>
 
           <div class="catalog-group">
-            <div class="catalog-group-header">
-              <h2 class="catalog-group-title">Productos <span class="catalog-count">({{ sortedProducts.length }})</span></h2>
-              <select v-model="sortOption" class="form-select form-select-sm catalog-sort">
-                <option value="featured">Ordenar: destacados</option>
-                <option value="price-desc">Precio: mayor a menor</option>
-                <option value="price-asc">Precio: menor a mayor</option>
-                <option value="name-asc">Nombre: A-Z</option>
-              </select>
-            </div>
+            <h2 class="catalog-group-title">Productos <span class="catalog-count">({{ sortedProducts.length }})</span></h2>
 
             <div v-if="sortedProducts.length === 0" class="empty-state">
               <div class="empty-state-icon">◇</div>
@@ -99,7 +101,7 @@ export default {
     return {
       products: [], combos: [], loading: true,
       search: '', categoryFilter: '', onlyAvailable: false,
-      sortOption: 'featured', showFilters: false
+      sortOption: 'name-asc', showFilters: false
     }
   },
   computed: {
@@ -122,22 +124,18 @@ export default {
       }
       return items
     },
-    sortedProducts() {
-      const items = [...this.filteredProducts]
-      const effectivePrice = p => Number(p.priceCash || p.price || 0)
-      switch (this.sortOption) {
-        case 'price-desc': return items.sort((a, b) => effectivePrice(b) - effectivePrice(a))
-        case 'price-asc':  return items.sort((a, b) => effectivePrice(a) - effectivePrice(b))
-        case 'name-asc':   return items.sort((a, b) => a.name.localeCompare(b.name))
-        default:           return items
-      }
-    },
+    sortedProducts() { return this.sortItems(this.filteredProducts) },
     filteredCombos() {
       if (this.categoryFilter !== '') return []
-      if (!this.search.trim()) return this.combos
-      const q = this.search.trim().toLowerCase()
-      return this.combos.filter(c => c.name.toLowerCase().includes(q))
-    }
+      let items = this.combos
+      if (this.onlyAvailable) items = items.filter(c => c.available)
+      if (this.search.trim()) {
+        const q = this.search.trim().toLowerCase()
+        items = items.filter(c => c.name.toLowerCase().includes(q))
+      }
+      return items
+    },
+    sortedCombos() { return this.sortItems(this.filteredCombos) }
   },
   watch: {
     '$route.query': { handler: 'applyRouteQuery', immediate: true }
@@ -152,6 +150,17 @@ export default {
     }
   },
   methods: {
+    sortItems(list) {
+      const price = item => Number(item.priceCash || item.price || 0)
+      const byName = (a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base', numeric: true })
+      const compare = {
+        'name-asc': byName,
+        'name-desc': (a, b) => byName(b, a),
+        'price-desc': (a, b) => price(b) - price(a) || byName(a, b),
+        'price-asc': (a, b) => price(a) - price(b) || byName(a, b)
+      }[this.sortOption]
+      return [...list].sort(compare)
+    },
     applyRouteQuery(query) {
       const catQuery = query.category
       this.categoryFilter = catQuery === undefined ? '' : (isNaN(catQuery) ? catQuery : Number(catQuery))
@@ -206,11 +215,12 @@ export default {
 .catalog-content { min-width: 0; }
 .catalog-group { margin-bottom: 2.5rem; }
 .catalog-group:last-child { margin-bottom: 0; }
-.catalog-group-header {
-  display: flex; align-items: baseline; justify-content: space-between;
-  gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;
+.catalog-toolbar {
+  display: flex; align-items: center; justify-content: flex-end;
+  gap: 0.6rem; margin-bottom: 1.25rem;
 }
-.catalog-group-title { font-size: 1.1rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.08em; }
+.catalog-toolbar label { margin: 0; white-space: nowrap; }
+.catalog-group-title { font-size: 1.1rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1rem; }
 .catalog-content .product-grid { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 1.5rem 1rem; }
 .catalog-count { color: var(--text-muted); font-family: var(--font-body); font-weight: 400; letter-spacing: 0; }
 .catalog-sort { width: auto; min-width: 190px; }
@@ -220,5 +230,7 @@ export default {
   .catalog-layout { grid-template-columns: 1fr; }
   .catalog-sidebar { display: none; position: static; }
   .catalog-sidebar.is-open { display: flex; }
+  .catalog-toolbar { justify-content: space-between; }
+  .catalog-sort { flex: 1; min-width: 0; }
 }
 </style>
