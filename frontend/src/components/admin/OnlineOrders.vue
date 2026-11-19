@@ -18,7 +18,7 @@
             <p>Todavía no hay pedidos online</p>
           </div>
           <div v-else class="table-responsive">
-            <table class="tac-table">
+            <table class="tac-table tac-stack">
               <thead>
                 <tr>
                   <th scope="col">Cliente</th>
@@ -32,19 +32,19 @@
               </thead>
               <tbody>
                 <tr v-for="order in orders" :key="order.id">
-                  <td class="fw-bold">{{ order.customerName }}</td>
-                  <td>{{ formatDate(order.createdAt) }}</td>
-                  <td class="text-center">
+                  <td class="fw-bold stack-title">{{ order.customerName }}</td>
+                  <td data-label="Fecha">{{ formatDate(order.createdAt) }}</td>
+                  <td class="text-center" data-label="Estado">
                     <span class="badge" :class="statusBadge(order.status)">{{ statusLabel(order.status) }}</span>
                   </td>
-                  <td class="text-center">${{ formatMoney(order.total) }}</td>
-                  <td class="text-center">
+                  <td class="text-center" data-label="Total">${{ formatMoney(order.total) }}</td>
+                  <td class="text-center" data-label="Venta asociada">
                     <router-link v-if="order.saleId" to="/admin/sales" class="badge badge-green" style="text-decoration:none">
                       Venta #{{ order.saleId }}
                     </router-link>
                     <span v-else class="text-muted">—</span>
                   </td>
-                  <td class="text-center">
+                  <td class="text-center" data-label="Correo">
                     <span v-if="order.correoImportedAt" class="badge badge-green">Cargado</span>
                     <span v-else-if="order.status === 'PAID' && order.shippingDeliveryType" class="badge badge-amber">Por cargar</span>
                     <span v-else class="text-muted">—</span>

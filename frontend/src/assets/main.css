@@ -762,3 +762,49 @@ label { font-family: var(--font-display); font-weight: 600; letter-spacing: 0.05
   .tac-modal-header h4 { font-size: 0.9rem; }
 }
 
+
+/* ── Tablas apiladas en celular ───────────────────────────────
+   Con .tac-stack cada fila pasa a ser una tarjeta y cada celda una línea
+   "etiqueta: valor" (la etiqueta sale de data-label). Las celdas sin
+   data-label ocupan la línea entera (acciones, celdas en edición). */
+@media (max-width: 767.98px) {
+  .tac-table.tac-stack thead { display: none; }
+  .tac-table.tac-stack,
+  .tac-table.tac-stack tbody,
+  .tac-table.tac-stack tfoot,
+  .tac-table.tac-stack tr,
+  .tac-table.tac-stack td { display: block; width: 100% !important; min-width: 0 !important; }
+  .tac-table.tac-stack tbody tr { display: flex; flex-direction: column; padding: 0.55rem 0.15rem; }
+  .tac-table.tac-stack td.stack-title { order: -1; }
+  .tac-table.tac-stack tbody tr:hover { background: transparent; }
+  .tac-table.tac-stack td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.3rem 0.75rem;
+    text-align: right !important;
+    overflow-wrap: anywhere;
+  }
+  .tac-table.tac-stack td[data-label]::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    text-align: left;
+  }
+  .tac-table.tac-stack td:not([data-label]) { justify-content: flex-end; }
+  .tac-table.tac-stack td.stack-title { justify-content: flex-start; text-align: left !important; font-size: 0.95rem; }
+  .tac-table.tac-stack td.stack-block { display: block; text-align: left !important; }
+  .tac-table.tac-stack td:empty,
+  .tac-table.tac-stack td.stack-hide { display: none; }
+  .tac-table.tac-stack tfoot tr { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 0 0.5rem; }
+  .tac-table.tac-stack tfoot td { width: auto !important; justify-content: flex-end; padding: 0.35rem 0.75rem; }
+  .tac-table.tac-stack td[data-label] > .form-select,
+  .tac-table.tac-stack td[data-label] > .form-control { max-width: 65%; }
+  .tac-table.tac-stack .text-muted:only-child { margin-left: auto; }
+}

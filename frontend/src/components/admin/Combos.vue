@@ -18,7 +18,7 @@
             <p>Sin combos cargados</p>
           </div>
           <div v-else class="table-responsive">
-            <table class="tac-table">
+            <table class="tac-table tac-stack">
               <thead>
                 <tr>
                   <th scope="col">Nombre</th>
@@ -31,13 +31,13 @@
               </thead>
               <tbody>
                 <tr v-for="combo in combos" :key="combo.id">
-                  <td class="fw-bold">{{ combo.name }}</td>
-                  <td style="font-size:0.82rem;color:var(--text-secondary)">
+                  <td class="fw-bold stack-title">{{ combo.name }}</td>
+                  <td class="stack-block" style="font-size:0.82rem;color:var(--text-secondary)">
                     {{ combo.items.map(slotSummary).join(', ') }}
                   </td>
-                  <td class="text-center">${{ formatMoney(combo.price) }}</td>
-                  <td class="text-center">{{ combo.priceCash != null ? '$' + formatMoney(combo.priceCash) : '—' }}</td>
-                  <td class="text-center">
+                  <td class="text-center" data-label="Tarjeta">${{ formatMoney(combo.price) }}</td>
+                  <td class="text-center" data-label="Efectivo / transf.">{{ combo.priceCash != null ? '$' + formatMoney(combo.priceCash) : '—' }}</td>
+                  <td class="text-center" data-label="Publicado">
                     <span class="badge" :class="combo.published ? 'badge-green' : 'badge-neutral'">
                       {{ combo.published ? 'Sí' : 'No' }}
                     </span>

@@ -304,7 +304,7 @@
 
           <!-- Items table -->
           <div v-if="saleForm.items.length > 0 || saleForm.combos.length > 0" class="table-responsive">
-            <table class="tac-table">
+            <table class="tac-table tac-stack">
               <thead>
                 <tr>
                   <th scope="col">Producto</th><th scope="col">Talle</th>
@@ -317,12 +317,12 @@
               </thead>
               <tbody>
                 <tr v-for="(item, idx) in saleForm.items" :key="idx">
-                  <td class="fw-bold">{{ getProductName(item.productId) }}</td>
-                  <td><span class="chip">{{ getSizeName(item.sizeId) }}</span></td>
-                  <td class="text-center">{{ item.quantity }}</td>
-                  <td class="text-end">${{ item.unitPrice.toFixed(2) }}</td>
-                  <td class="text-end fw-bold">${{ (item.quantity * item.unitPrice).toFixed(2) }}</td>
-                  <td class="text-center">
+                  <td class="fw-bold stack-title">{{ getProductName(item.productId) }}</td>
+                  <td data-label="Talle"><span class="chip">{{ getSizeName(item.sizeId) }}</span></td>
+                  <td class="text-center" data-label="Cant.">{{ item.quantity }}</td>
+                  <td class="text-end" data-label="Precio">${{ item.unitPrice.toFixed(2) }}</td>
+                  <td class="text-end fw-bold" data-label="Subtotal">${{ (item.quantity * item.unitPrice).toFixed(2) }}</td>
+                  <td class="text-center" data-label="Entrega">
                     <button type="button"
                       class="btn btn-sm"
                       :class="item.deliverNow !== false ? 'btn-success-soft' : 'btn-warning-soft'"
@@ -338,15 +338,15 @@
                   </td>
                 </tr>
                 <tr v-for="(c, idx) in saleForm.combos" :key="'combo-' + idx">
-                  <td>
+                  <td class="stack-block">
                     <span class="chip chip-combo">Combo</span> <span class="fw-bold">{{ c.name }}</span>
                     <div class="combo-detail">{{ c.detail }}</div>
                   </td>
-                  <td>—</td>
-                  <td class="text-center">{{ c.quantity }}</td>
-                  <td class="text-end">${{ c.unitPrice.toFixed(2) }}</td>
-                  <td class="text-end fw-bold">${{ (c.quantity * c.unitPrice).toFixed(2) }}</td>
-                  <td class="text-center">
+                  <td class="stack-hide">—</td>
+                  <td class="text-center" data-label="Cant.">{{ c.quantity }}</td>
+                  <td class="text-end" data-label="Precio">${{ c.unitPrice.toFixed(2) }}</td>
+                  <td class="text-end fw-bold" data-label="Subtotal">${{ (c.quantity * c.unitPrice).toFixed(2) }}</td>
+                  <td class="text-center" data-label="Entrega">
                     <button type="button" class="btn btn-sm" :class="c.deliverNow ? 'btn-success-soft' : 'btn-warning-soft'"
                       @click="c.deliverNow = !c.deliverNow" :disabled="isProcessing" :aria-pressed="c.deliverNow" :aria-label="`Entrega de ${c.name}`">
                       {{ c.deliverNow ? '✓ Ahora' : '⏳ Pendiente' }}
@@ -439,7 +439,7 @@
           </div>
 
           <div v-else-if="sales.length > 0" class="table-responsive">
-            <table class="tac-table">
+            <table class="tac-table tac-stack">
               <thead>
                 <tr>
                   <th scope="col">Fecha</th><th scope="col">Cliente</th><th scope="col">ID</th>
@@ -450,19 +450,19 @@
               </thead>
               <tbody>
                 <tr v-for="sale in sales" :key="sale.id">
-                  <td style="white-space:nowrap"><small>{{ formatDateTime(sale.saleDate) }}</small></td>
-                  <td class="fw-bold">
+                  <td style="white-space:nowrap" data-label="Fecha"><small>{{ formatDateTime(sale.saleDate) }}</small></td>
+                  <td class="fw-bold stack-title">
                     {{ sale.customerName }}
                     <span v-if="sale.channel === 'ONLINE'" class="chip chip-online" title="Venta de la tienda online">Online</span>
                   </td>
-                  <td>
+                  <td data-label="DNI / CUIT">
                     <span v-if="sale.customerIdentification" class="badge badge-steel">{{ sale.customerIdentification }}</span>
                     <span v-else class="text-muted">—</span>
                   </td>
-                  <td><span class="payment-badge" :class="paymentClass(sale.paymentMethod)">{{ paymentLabel(sale.paymentMethod) }}</span></td>
-                  <td class="text-end fw-bold text-success">${{ sale.total?.toFixed(2) }}</td>
-                  <td><small class="text-muted">{{ sale.observations || '—' }}</small></td>
-                  <td>
+                  <td data-label="Pago"><span class="payment-badge" :class="paymentClass(sale.paymentMethod)">{{ paymentLabel(sale.paymentMethod) }}</span></td>
+                  <td class="text-end fw-bold text-success" data-label="Total">${{ sale.total?.toFixed(2) }}</td>
+                  <td data-label="Observ."><small class="text-muted">{{ sale.observations || '—' }}</small></td>
+                  <td class="stack-block">
                     <details>
                       <summary class="summary-trigger">
                         {{ sale.items?.length || 0 }} ítem(s)
@@ -540,7 +540,7 @@
 
             <!-- Tabla de ítems -->
             <div class="table-responsive">
-              <table class="tac-table">
+              <table class="tac-table tac-stack">
                 <thead>
                   <tr>
                     <th scope="col">Producto</th>
@@ -554,11 +554,11 @@
                 <tbody>
                   <tr v-for="item in sale.items" :key="item.id"
                     :class="item.deliveryStatus === 'PENDIENTE' ? 'pending-item-row' : 'delivered-item-row'">
-                    <td class="fw-bold">{{ item.product?.name || 'N/A' }}</td>
-                    <td><span v-if="item.size?.name" class="chip">{{ item.size.name }}</span><span v-else class="text-muted">—</span></td>
-                    <td class="text-center">{{ item.quantity }}</td>
-                    <td class="text-end">${{ item.unitPrice?.toFixed(2) }}</td>
-                    <td class="text-center">
+                    <td class="fw-bold stack-title">{{ item.product?.name || 'N/A' }}</td>
+                    <td data-label="Talle"><span v-if="item.size?.name" class="chip">{{ item.size.name }}</span><span v-else class="text-muted">—</span></td>
+                    <td class="text-center" data-label="Cant.">{{ item.quantity }}</td>
+                    <td class="text-end" data-label="Precio">${{ item.unitPrice?.toFixed(2) }}</td>
+                    <td class="text-center" data-label="Estado">
                       <span class="delivery-badge" :class="item.deliveryStatus === 'PENDIENTE' ? 'delivery-pending' : 'delivery-done'">
                         {{ item.deliveryStatus === 'PENDIENTE' ? '⏳ Pendiente' : '✓ Entregado' }}
                       </span>
@@ -677,30 +677,30 @@
 
               <div class="section-form-label mb-2">Ítems</div>
               <div class="table-responsive mb-3" style="overflow:visible">
-                <table class="tac-table">
+                <table class="tac-table tac-stack">
                   <thead>
                     <tr><th scope="col">Producto</th><th scope="col">Talle</th><th scope="col">Cant.</th><th scope="col">Precio</th><th scope="col" class="text-end">Subtotal</th><th scope="col"></th></tr>
                   </thead>
                   <tbody>
                     <tr v-for="(item, idx) in editModal.sale.items" :key="idx">
-                      <td style="min-width:220px">
+                      <td class="stack-block" style="min-width:220px">
                         <ProductPicker v-model="item.productId" :products="productsForEdit(item)" small
                           aria-label="Producto" :disabled="isProcessing" />
                       </td>
-                      <td>
+                      <td data-label="Talle">
                         <select v-model.number="item.sizeId" class="form-select form-select-sm" aria-label="Talle" :disabled="isProcessing">
                           <option value="">Sin talle</option>
                           <option v-for="s in sizesForProduct(item.productId, item.sizeId)" :key="s.id" :value="s.id">{{ s.name }}</option>
                         </select>
                       </td>
-                      <td><input v-model.number="item.quantity" type="number" min="1" class="form-control form-control-sm" style="width:70px" aria-label="Cantidad" :disabled="isProcessing" /></td>
-                      <td>
+                      <td data-label="Cant."><input v-model.number="item.quantity" type="number" min="1" class="form-control form-control-sm" style="width:70px" aria-label="Cantidad" :disabled="isProcessing" /></td>
+                      <td data-label="Precio">
                         <div class="input-group" style="width:120px">
                           <span class="input-group-text" aria-hidden="true">$</span>
                           <input v-model.number="item.unitPrice" type="number" min="0" step="0.01" class="form-control form-control-sm" aria-label="Precio unitario" :disabled="isProcessing" />
                         </div>
                       </td>
-                      <td class="text-end">${{ (item.quantity * item.unitPrice).toFixed(2) }}</td>
+                      <td class="text-end" data-label="Subtotal">${{ (item.quantity * item.unitPrice).toFixed(2) }}</td>
                       <td><button type="button" class="btn btn-sm btn-danger btn-icon" @click="removeEditItem(idx)" :disabled="isProcessing" aria-label="Quitar ítem">✕</button></td>
                     </tr>
                   </tbody>

@@ -176,7 +176,7 @@
                 <p>{{ archivedProducts.length === 0 ? 'No hay productos archivados' : 'Sin resultados' }}</p>
               </div>
               <div v-else class="table-responsive">
-                <table class="tac-table">
+                <table class="tac-table tac-stack">
                   <thead>
                     <tr>
                       <th scope="col">Producto</th>
@@ -188,10 +188,10 @@
                   </thead>
                   <tbody>
                     <tr v-for="prod in filteredArchived" :key="prod.id">
-                      <td class="fw-bold">{{ prod.name }}</td>
-                      <td class="text-end"><span class="badge badge-crimson">${{ prod.price?.toFixed(2) }}</span></td>
-                      <td class="text-end"><span class="badge badge-steel">${{ prod.priceCash?.toFixed(2) ?? '—' }}</span></td>
-                      <td><span class="chip">{{ prod.category?.name || '—' }}</span></td>
+                      <td class="fw-bold stack-title">{{ prod.name }}</td>
+                      <td class="text-end" data-label="💳 Tarjeta"><span class="badge badge-crimson">${{ prod.price?.toFixed(2) }}</span></td>
+                      <td class="text-end" data-label="💵 Efectivo"><span class="badge badge-steel">${{ prod.priceCash?.toFixed(2) ?? '—' }}</span></td>
+                      <td data-label="Categoría"><span class="chip">{{ prod.category?.name || '—' }}</span></td>
                       <td class="text-center">
                         <button class="btn btn-sm btn-primary" @click="handleRestore(prod)" :disabled="isProcessing" :aria-label="`Restaurar producto ${prod.name}`">Restaurar</button>
                       </td>
@@ -304,7 +304,7 @@
               </div>
 
               <div v-else class="table-responsive">
-                <table class="tac-table">
+                <table class="tac-table tac-stack">
                   <thead>
                     <tr>
                       <th scope="col">Producto</th>
@@ -318,13 +318,13 @@
                     <tr v-for="prod in paginatedProducts" :key="prod.id">
                       <!-- View -->
                       <template v-if="editingId !== prod.id">
-                        <td class="fw-bold">{{ prod.name }}</td>
-                        <td class="text-end"><span class="badge badge-crimson">${{ prod.price?.toFixed(2) }}</span></td>
-                        <td class="text-end"><span class="badge badge-steel">${{ prod.priceCash?.toFixed(2) ?? '—' }}</span></td>
-                        <td><span class="chip">{{ prod.category?.name || '—' }}</span></td>
+                        <td class="fw-bold stack-title">{{ prod.name }}</td>
+                        <td class="text-end" data-label="💳 Tarjeta"><span class="badge badge-crimson">${{ prod.price?.toFixed(2) }}</span></td>
+                        <td class="text-end" data-label="💵 Efectivo"><span class="badge badge-steel">${{ prod.priceCash?.toFixed(2) ?? '—' }}</span></td>
+                        <td data-label="Categoría"><span class="chip">{{ prod.category?.name || '—' }}</span></td>
                       </template>
                       <!-- Edit -->
-                      <td v-else colspan="4">
+                      <td v-else colspan="4" class="stack-block">
                         <div class="row g-2">
                           <div class="col-md-3">
                             <input v-model.trim="editingData.name" class="form-control form-control-sm" placeholder="Nombre" aria-label="Nombre del producto" :disabled="isProcessing" />

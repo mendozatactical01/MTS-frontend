@@ -203,7 +203,7 @@ export default {
 .separator { opacity: 0.4; }
 .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--crimson-light); animation: pulse 2s infinite; flex-shrink: 0; }
 
-.main-wrap { margin-left: var(--sidebar-width); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+.main-wrap { margin-left: var(--sidebar-width); flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 100vh; }
 
 .topbar {
   height: 52px; background: var(--bg-surface); border-bottom: 1px solid var(--border);

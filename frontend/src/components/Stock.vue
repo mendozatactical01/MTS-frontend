@@ -130,7 +130,7 @@
         </div>
         <div class="tac-card-body" style="padding-bottom:.5rem">
           <div v-if="bulkLoad.rows.length" class="table-responsive bulk-table-wrap mb-2">
-            <table class="tac-table">
+            <table class="tac-table tac-stack">
               <thead>
                 <tr>
                   <th scope="col">Producto</th>
@@ -142,21 +142,21 @@
               </thead>
               <tbody>
                 <tr v-for="(row, i) in bulkLoad.rows" :key="i" :class="row.status === 'ok' ? 'bulk-row-ok' : row.status === 'error' ? 'bulk-row-error' : ''">
-                  <td>
+                  <td class="stack-block">
                     <ProductPicker :model-value="row.productId" @update:model-value="setBulkProduct(row, $event)"
                       :products="products" small :disabled="isBulkProcessing" />
                   </td>
-                  <td>
+                  <td data-label="Talle">
                     <select v-model.number="row.sizeId" class="form-select form-select-sm" aria-label="Talle" :disabled="isBulkProcessing">
                       <option v-if="!sizesForProduct(row.productId).length" value="">Sin talle</option>
                       <option v-for="s in sizesForProduct(row.productId)" :key="s.id" :value="s.id">{{ s.name }}</option>
                     </select>
                   </td>
-                  <td>
+                  <td data-label="Cantidad">
                     <input v-model.number="row.quantity" type="number" min="1" class="form-control form-control-sm"
                       aria-label="Cantidad" :disabled="isBulkProcessing" placeholder="1" @focus="$event.target.select()" />
                   </td>
-                  <td class="text-center">
+                  <td class="text-center" data-label="Estado">
                     <span v-if="row.status === null" style="color:var(--text-muted)">—</span>
                     <span v-else-if="row.status === 'ok'" class="bulk-status-ok" title="OK" aria-label="OK">✓</span>
                     <span v-else class="bulk-status-error" :title="row.error" :aria-label="row.error || 'Error'">✕</span>
